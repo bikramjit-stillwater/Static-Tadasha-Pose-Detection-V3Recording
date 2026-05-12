@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🧘 Tadasana Pose Analysis</h1>
+    <div class="subtitle">Your alignment report</div>
+</div>
+
+<div class="action-row">
+    <a href="{{ url_for('index') }}" class="back-btn">← Analyze a different one</a>
+</div>
+
+{% if result.low_quality_warning %}
+    <div class="warning-banner">
+        {{ result.low_quality_message or "Low confidence in this analysis - please re-record." }}
+    </div>
+{% endif %}
+
+<div class="hero-row">
+    <!-- Score hero -->
+    <div class="score-hero">
+        <div>
+            <div class="score-label">Final Score</div>
+            <div class="score-line">
+                <span class="score-value">{{ result.final_score }}</span>
+                <span class="score-suffix">/100</span>
+            </div>
+            {% set band = 'band-poor' %}
+            {% set band_label = 'Needs work' %}
+            {% if result.final_score >= 85 %}{% set band = 'band-excellent' %}{% set band_label = 'Excellent' %}
+            {% elif result.final_score >= 70 %}{% set band = 'band-good' %}{% set band_label = 'Good' %}
+            {% elif result.final_score >= 50 %}{% set band = 'band-mixed' %}{% set band_label = 'Mixed' %}
+            {% endif %}
+            <span class="score-band {{ band }}">{{ band_label }}</span>
+            <div>
+                <span class="input-mode-tag">{{ '📹 Video' if result.mode == 'video' else '📸 Photo' }}</span>
+            </div>
+        </div>
+        <div class="issues-block">
+            <h4>Top Issues</h4>
+            {% if result.issues %}
+                {% for issue in result.issues[:3] %}
+                    <div class="issue-item">{{ issue }}</div>
+                {% endfor %}
+            {% else %}
+                <div class="no-issues">✓ No major issues detected</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Annotated image -->
+    <div class="image-card">
+        <div class="image-card-header">
+            <div class="image-card-title">{{ 'Annotated Photo' if result.mode == 'photo' else 'Annotated Best Frame' }}</div>
+            <div class="image-card-legend">
+                <span class="legend-dot" style="background:#22c55e"></span>passed
+                &nbsp;
+                <span class="legend-dot" style="background:#ef4444"></span>needs work
+                &nbsp;
+                <span class="legend-dot" style="background:#9ca3af"></span>not visible
+            </div>
+        </div>
+        <div class="annotated-wrap">
+            {% if result.annotated_url %}
+                <img src="{{ result.annotated_url }}" alt="Annotated pose">
+            {% elif result.best_frame_url %}
+                <img src="{{ result.best_frame_url }}" alt="Best frame">
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if result.steps %}
+<h2>Step-by-Step Breakdown</h2>
+<div class="step-caption">Each card zooms into the body part being checked. Gray cards mean the body part wasn't visible.</div>
+
+<div class="step-grid">
+    {% for s in result.steps %}
+        {% set step_key = 'step_' ~ s.step %}
+        {% set img = result.step_image_urls.get(step_key) %}
+        {% set not_vis = s.not_visible %}
+
+        {% if not_vis %}
+            <div class="step-card notvisible">
+                <div class="step-header">
+                    <div class="step-name">Step {{ s.step }}: {{ s.name }}</div>
+                    <div class="step-status-icon">👁️</div>
+                </div>
+                <div class="step-score-row">
+                    <div>
+                        <span class="step-score-big notvisible">0</span>
+                        <span class="step-score-suffix">/100</span>
+                    </div>
+                    <div class="step-fail-rate">Not visible</div>
+                </div>
+                <div class="step-image-wrap">
+                    {% if img %}<img src="{{ img }}" alt="Step {{ s.step }}">{% endif %}
+                </div>
+                <div class="step-notvisible-msg">
+                    <strong>Cannot evaluate:</strong> {{ s.issue or 'body part not visible in the frame' }}
+                </div>
+                <div class="step-cue"><strong>Cue:</strong> {{ s.cue }}</div>
+            </div>
+        {% else %}
+            {% set passed = s.passed_overall %}
+            {% set pf_class = 'passed' if passed else 'failed' %}
+            {% set score_class = 'pass' if passed else 'fail' %}
+            {% set icon = '✅' if passed else '⚠️' %}
+            {% if result.mode == 'photo' %}
+                {% set rate_label = 'Pass' if passed else 'Needs work' %}
+            {% else %}
+                {% set rate_label = 'Failed in ' ~ s.fail_rate_percent ~ '% of frames' %}
+            {% endif %}
+
+            <div class="step-card {{ pf_class }}">
+                <div class="step-header">
+                    <div class="step-name">Step {{ s.step }}: {{ s.name }}</div>
+                    <div class="step-status-icon">{{ icon }}</div>
+                </div>
+                <div class="step-score-row">
+                    <div>
+                        <span class="step-score-big {{ score_class }}">{{ s.average_score }}</span>
+                        <span class="step-score-suffix">/100</span>
+                    </div>
+                    <div class="step-fail-rate">{{ rate_label }}</div>
+                </div>
+                <div class="step-image-wrap">
+                    {% if img %}<img src="{{ img }}" alt="Step {{ s.step }}">{% endif %}
+                </div>
+                {% if s.issue %}
+                    <div class="step-issue"><strong>Issue:</strong> {{ s.issue }}</div>
+                {% else %}
+                    <div class="step-passed-msg"><strong>✓</strong> Looks good for this step.</div>
+                {% endif %}
+                <div class="step-cue"><strong>Cue:</strong> {{ s.cue }}</div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+<h2>Coach's Feedback</h2>
+<div class="feedback-caption">Generated based on your step-by-step report.</div>
+<div class="feedback-box">{{ result.feedback }}</div>
+
+{% endblock %}

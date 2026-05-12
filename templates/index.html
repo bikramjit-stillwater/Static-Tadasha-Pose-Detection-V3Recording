@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h1>🧘 Tadasana Pose Analysis</h1>
+    <div class="subtitle">Mountain Pose - Upload a video OR take a photo OR record live. Get a step-by-step alignment report.</div>
+</div>
+
+<div class="side-view-banner">
+    <div class="label">📐 How to capture</div>
+    <div class="title">Stand tall with arms reaching overhead - full body in frame</div>
+    <div class="body-text">
+        For the analysis to work, your full body must be visible:
+        <ul>
+            <li>Camera at chest height or further back so the whole body fits</li>
+            <li>Front view works best - face the camera</li>
+            <li>The whole body should fit in the frame - feet, knees, hips, torso, arms, head</li>
+            <li>Hold the pose steadily for the duration of the recording</li>
+        </ul>
+    </div>
+</div>
+
+<h2>Choose how to capture your pose</h2>
+
+<div class="tab-nav">
+    <button class="tab-btn active" data-tab="upload-video">📁 Upload Video</button>
+    <button class="tab-btn" data-tab="upload-photo">🖼️ Upload Photo</button>
+    <button class="tab-btn" data-tab="record-video">🎥 Record Video</button>
+</div>
+
+<!-- Tab 1: Upload Video -->
+<div class="tab-panel active" id="tab-upload-video">
+    <div class="upload-zone">
+        <input type="file" id="video-file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,.mp4,.mov,.avi,.mkv" hidden>
+        <label for="video-file" class="upload-label">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Click to select a video file</div>
+            <div class="upload-hint">MP4, MOV, AVI, or MKV (max 100 MB)</div>
+        </label>
+        <div class="upload-preview" id="video-preview"></div>
+    </div>
+</div>
+
+<!-- Tab 2: Upload Photo -->
+<div class="tab-panel" id="tab-upload-photo">
+    <div class="upload-zone">
+        <input type="file" id="photo-file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" hidden>
+        <label for="photo-file" class="upload-label">
+            <div class="upload-icon">🖼️</div>
+            <div class="upload-text">Click to select a photo</div>
+            <div class="upload-hint">JPG or PNG</div>
+        </label>
+        <div class="upload-preview" id="photo-preview"></div>
+    </div>
+</div>
+
+<!-- Tab 3: Record Video -->
+<div class="tab-panel" id="tab-record-video">
+    <div class="record-zone">
+        <div class="record-preview-wrap">
+            <video id="record-preview" autoplay muted playsinline></video>
+            <div class="record-timer" id="record-timer">00:00</div>
+        </div>
+        <div class="record-controls">
+            <button class="record-btn primary" id="btn-start-camera">📷 Start Camera</button>
+            <button class="record-btn record" id="btn-start-record" disabled>● Start Recording</button>
+            <button class="record-btn stop" id="btn-stop-record" disabled>■ Stop</button>
+            <button class="record-btn ghost" id="btn-discard" style="display:none">Discard</button>
+        </div>
+        <div class="record-hint">Record yourself in Tadasana with arms overhead. 5-15 seconds is plenty. Hold steadily.</div>
+    </div>
+</div>
+
+<div class="action-row">
+    <button class="primary-btn" id="btn-analyze" disabled>🔍 Analyze Pose</button>
+</div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loading-overlay">
+    <div class="loading-card">
+        <div class="spinner"></div>
+        <div class="loading-text">Analyzing your pose...</div>
+        <div class="loading-subtext">This may take 10-30 seconds</div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/recorder.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
