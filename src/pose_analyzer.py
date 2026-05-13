@@ -1,17 +1,12 @@
 """
 Pose analyzer for arms-overhead Tadasana.
 
-Two entry points:
-  - analyze_video(path)  : process video frame by frame, aggregate scores
-  - analyze_image(path)  : process a single photo
-
-VISIBILITY RULE:
-  Each step has critical body parts. Landmarks below visibility 0.5 are
-  treated as not visible, and that step scores 0 with a clear message.
-
-SCORE-ZERO HIDING (NEW):
-  Aggregated scores of 0 are flagged with `hide_from_ui = True` so the UI
-  can skip rendering that step's card.
+REFINED RULE for score-zero hiding:
+  - In aggregate_step_reports: hide_from_ui = not_visible_overall
+    (i.e., hide only if the body part was missing in most frames)
+  - In _single_frame_to_aggregated: propagate the hide_from_ui flag
+    already set by validate_tadasana() per step.
+  - A genuinely-bad pose where the body part WAS visible stays VISIBLE.
 """
 
 import cv2
@@ -200,10 +195,8 @@ def generate_step_images(frame, lms, step_results, save_dir):
         return RED
 
     def line(p1, p2, color, thick=4):
-        cv2.line(annotated,
-                 (int(p1[0]), int(p1[1])),
-                 (int(p2[0]), int(p2[1])),
-                 color, thick, cv2.LINE_AA)
+        cv2.line(annotated, (int(p1[0]), int(p1[1])),
+                 (int(p2[0]), int(p2[1])), color, thick, cv2.LINE_AA)
 
     def dot(p, color, r=6):
         cv2.circle(annotated, (int(p[0]), int(p[1])), r, color, -1, cv2.LINE_AA)
@@ -312,8 +305,9 @@ def aggregate_step_reports(all_reports):
 
         not_visible_overall = not_visible_rate > 50
 
-        # NEW: hide step from UI if aggregated score is 0 (or essentially zero)
-        hide_from_ui = avg <= 0.0
+        # REFINED: hide step from UI ONLY if it was not_visible in most frames.
+        # Genuinely-bad scores stay visible.
+        hide_from_ui = not_visible_overall
 
         aggregated_steps.append({
             "step": i + 1,
@@ -331,7 +325,6 @@ def aggregate_step_reports(all_reports):
     final_score = int(round(sum(finals) / len(finals)))
     final_score = max(0, min(100, final_score))
 
-    # Exclude hidden steps from the visible issues list
     significant_issues = [
         s["issue"] for s in aggregated_steps
         if s["issue"] and s["fail_rate_percent"] >= 25 and not s.get("hide_from_ui")
@@ -344,7 +337,6 @@ def aggregate_step_reports(all_reports):
 
 
 def _single_frame_to_aggregated(report):
-    """Convert single-frame validation result into aggregated shape (for photos)."""
     aggregated_steps = []
     for s in report["steps"]:
         not_vis = s.get("not_visible", False)
@@ -362,7 +354,6 @@ def _single_frame_to_aggregated(report):
             "issue": s["issue"],
             "passed_overall": s["passed"] and not not_vis,
         })
-    # Filter issues to exclude hidden steps
     issues = [s["issue"] for s in report["steps"]
               if s.get("issue") and not s.get("hide_from_ui")]
     return {
