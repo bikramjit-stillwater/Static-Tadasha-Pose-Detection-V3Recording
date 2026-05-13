@@ -3,12 +3,15 @@ Pose analyzer for arms-overhead Tadasana.
 
 Two entry points:
   - analyze_video(path)  : process video frame by frame, aggregate scores
-  - analyze_image(path)  : process a single photo (same scoring + image generation)
+  - analyze_image(path)  : process a single photo
 
 VISIBILITY RULE:
-  Each step has critical body parts (e.g. Stance needs feet).
-  Before scoring, we check if those landmarks have visibility >= 0.5.
-  If not, that step gets score 0 with a "not visible" message.
+  Each step has critical body parts. Landmarks below visibility 0.5 are
+  treated as not visible, and that step scores 0 with a clear message.
+
+SCORE-ZERO HIDING (NEW):
+  Aggregated scores of 0 are flagged with `hide_from_ui = True` so the UI
+  can skip rendering that step's card.
 """
 
 import cv2
@@ -17,10 +20,7 @@ import math
 from src.pose_detector import PoseDetector
 from src.scorer import calculate_angle, validate_tadasana
 
-# Best-frame score below this triggers a low-confidence flag
 MIN_QUALITY_SCORE = 50
-
-# Visibility threshold - landmarks below this are considered not visible
 VISIBILITY_THRESHOLD = 0.5
 
 POSE_LANDMARKS = {
@@ -35,17 +35,16 @@ POSE_LANDMARKS = {
     "left_foot_index": 31, "right_foot_index": 32,
 }
 
-# Critical landmarks per step - if any are not visible, the step scores 0
 STEP_CRITICAL_LANDMARKS = {
-    1: ["left_ankle", "right_ankle", "left_hip", "right_hip"],                       # Stance
-    2: ["left_shoulder", "right_shoulder", "left_hip", "right_hip",                   # Body Balance
+    1: ["left_ankle", "right_ankle", "left_hip", "right_hip"],
+    2: ["left_shoulder", "right_shoulder", "left_hip", "right_hip",
         "left_ankle", "right_ankle"],
-    3: ["left_hip", "right_hip", "left_knee", "right_knee",                           # Legs & Knees
+    3: ["left_hip", "right_hip", "left_knee", "right_knee",
         "left_ankle", "right_ankle"],
-    4: ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],                  # Spine
-    5: ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow",               # Shoulders & Arms
+    4: ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
+    5: ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
         "left_wrist", "right_wrist"],
-    6: ["nose", "left_shoulder", "right_shoulder"],                                   # Head & Neck
+    6: ["nose", "left_shoulder", "right_shoulder"],
 }
 
 
@@ -66,12 +65,7 @@ def angle_from_vertical(p_top, p_bottom):
     return math.degrees(math.atan2(abs(dx), abs(dy)))
 
 
-# -----------------------------------------------------------------------------
-# Visibility check
-# -----------------------------------------------------------------------------
 def landmark_is_visible(lms, idx):
-    """A landmark is visible if MediaPipe's confidence is high enough AND
-    it's actually inside the image (not extrapolated off-screen)."""
     lm = lms[idx]
     if lm.visibility < VISIBILITY_THRESHOLD:
         return False
@@ -81,8 +75,6 @@ def landmark_is_visible(lms, idx):
 
 
 def get_step_visibility(lms):
-    """Return {step_num: bool} - True if all critical landmarks for that step
-    are visible enough to trust."""
     result = {}
     for step_num, names in STEP_CRITICAL_LANDMARKS.items():
         all_visible = True
@@ -95,9 +87,6 @@ def get_step_visibility(lms):
     return result
 
 
-# -----------------------------------------------------------------------------
-# Feature extraction
-# -----------------------------------------------------------------------------
 def build_features(lms, w, h):
     ls = extract_xy(lms, w, h, POSE_LANDMARKS["left_shoulder"])
     rs = extract_xy(lms, w, h, POSE_LANDMARKS["right_shoulder"])
@@ -164,9 +153,6 @@ def build_features(lms, w, h):
     }
 
 
-# -----------------------------------------------------------------------------
-# Image generation - crops + annotated full image
-# -----------------------------------------------------------------------------
 def _crop_safe(img, x1, y1, x2, y2):
     h, w = img.shape[:2]
     x1 = max(0, int(x1)); y1 = max(0, int(y1))
@@ -194,7 +180,6 @@ def generate_step_images(frame, lms, step_results, save_dir):
     pts = {name: extract_xy(lms, w, h, idx)
            for name, idx in POSE_LANDMARKS.items()}
 
-    # Step state: passed/failed/not_visible
     def step_state(step_num):
         for s in step_results:
             if s["step"] == step_num:
@@ -296,9 +281,6 @@ def generate_step_images(frame, lms, step_results, save_dir):
     return paths
 
 
-# -----------------------------------------------------------------------------
-# Aggregation across frames (for video)
-# -----------------------------------------------------------------------------
 def aggregate_step_reports(all_reports):
     if not all_reports:
         return None
@@ -328,8 +310,10 @@ def aggregate_step_reports(all_reports):
         not_visible_rate = round(not_visible_count / len(all_reports) * 100, 1)
         most_common = max(set(issues_seen), key=issues_seen.count) if issues_seen else None
 
-        # If body part was not visible in majority of frames, treat as not visible overall
         not_visible_overall = not_visible_rate > 50
+
+        # NEW: hide step from UI if aggregated score is 0 (or essentially zero)
+        hide_from_ui = avg <= 0.0
 
         aggregated_steps.append({
             "step": i + 1,
@@ -338,6 +322,7 @@ def aggregate_step_reports(all_reports):
             "fail_rate_percent": fail_rate,
             "not_visible_rate_percent": not_visible_rate,
             "not_visible": not_visible_overall,
+            "hide_from_ui": hide_from_ui,
             "issue": most_common,
             "passed_overall": fail_rate < 25 and not not_visible_overall,
         })
@@ -346,9 +331,10 @@ def aggregate_step_reports(all_reports):
     final_score = int(round(sum(finals) / len(finals)))
     final_score = max(0, min(100, final_score))
 
+    # Exclude hidden steps from the visible issues list
     significant_issues = [
         s["issue"] for s in aggregated_steps
-        if s["issue"] and s["fail_rate_percent"] >= 25
+        if s["issue"] and s["fail_rate_percent"] >= 25 and not s.get("hide_from_ui")
     ]
     return {
         "final_score": final_score,
@@ -362,6 +348,7 @@ def _single_frame_to_aggregated(report):
     aggregated_steps = []
     for s in report["steps"]:
         not_vis = s.get("not_visible", False)
+        hide = s.get("hide_from_ui", False)
         aggregated_steps.append({
             "step": s["step"],
             "name": s["name"],
@@ -371,19 +358,20 @@ def _single_frame_to_aggregated(report):
             "fail_rate_percent": 0.0 if s["passed"] else 100.0,
             "not_visible_rate_percent": 100.0 if not_vis else 0.0,
             "not_visible": not_vis,
+            "hide_from_ui": hide,
             "issue": s["issue"],
             "passed_overall": s["passed"] and not not_vis,
         })
+    # Filter issues to exclude hidden steps
+    issues = [s["issue"] for s in report["steps"]
+              if s.get("issue") and not s.get("hide_from_ui")]
     return {
         "final_score": report["final_score"],
         "steps": aggregated_steps,
-        "issues": report["issues"],
+        "issues": issues,
     }
 
 
-# -----------------------------------------------------------------------------
-# Video analysis
-# -----------------------------------------------------------------------------
 def analyze_video(video_path, save_frames_dir=None):
     detector = PoseDetector()
     cap = cv2.VideoCapture(video_path)
@@ -466,9 +454,6 @@ def analyze_video(video_path, save_frames_dir=None):
     }
 
 
-# -----------------------------------------------------------------------------
-# Photo analysis - same logic as one frame of video
-# -----------------------------------------------------------------------------
 def analyze_image(image_path, save_frames_dir=None):
     detector = PoseDetector()
     frame = cv2.imread(image_path)
