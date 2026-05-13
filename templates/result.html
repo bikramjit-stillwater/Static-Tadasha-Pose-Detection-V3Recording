@@ -56,8 +56,6 @@
                 <span class="legend-dot" style="background:#22c55e"></span>passed
                 &nbsp;
                 <span class="legend-dot" style="background:#ef4444"></span>needs work
-                &nbsp;
-                <span class="legend-dot" style="background:#9ca3af"></span>not visible
             </div>
         </div>
         <div class="annotated-wrap">
@@ -71,37 +69,17 @@
 </div>
 
 {% if result.steps %}
+{% set visible_count = result.steps | rejectattr('hide_from_ui') | list | length %}
+{% if visible_count > 0 %}
 <h2>Step-by-Step Breakdown</h2>
-<div class="step-caption">Each card zooms into the body part being checked. Gray cards mean the body part wasn't visible.</div>
+<div class="step-caption">Each card zooms into the body part being checked.</div>
 
 <div class="step-grid">
     {% for s in result.steps %}
-        {% set step_key = 'step_' ~ s.step %}
-        {% set img = result.step_image_urls.get(step_key) %}
-        {% set not_vis = s.not_visible %}
-
-        {% if not_vis %}
-            <div class="step-card notvisible">
-                <div class="step-header">
-                    <div class="step-name">Step {{ s.step }}: {{ s.name }}</div>
-                    <div class="step-status-icon">👁️</div>
-                </div>
-                <div class="step-score-row">
-                    <div>
-                        <span class="step-score-big notvisible">0</span>
-                        <span class="step-score-suffix">/100</span>
-                    </div>
-                    <div class="step-fail-rate">Not visible</div>
-                </div>
-                <div class="step-image-wrap">
-                    {% if img %}<img src="{{ img }}" alt="Step {{ s.step }}">{% endif %}
-                </div>
-                <div class="step-notvisible-msg">
-                    <strong>Cannot evaluate:</strong> {{ s.issue or 'body part not visible in the frame' }}
-                </div>
-                <div class="step-cue"><strong>Cue:</strong> {{ s.cue }}</div>
-            </div>
-        {% else %}
+        {# Skip steps flagged hide_from_ui (score = 0) #}
+        {% if not s.hide_from_ui %}
+            {% set step_key = 'step_' ~ s.step %}
+            {% set img = result.step_image_urls.get(step_key) %}
             {% set passed = s.passed_overall %}
             {% set pf_class = 'passed' if passed else 'failed' %}
             {% set score_class = 'pass' if passed else 'fail' %}
@@ -138,9 +116,9 @@
     {% endfor %}
 </div>
 {% endif %}
+{% endif %}
 
 <h2>Coach's Feedback</h2>
-<div class="feedback-caption">Generated based on your step-by-step report.</div>
 <div class="feedback-box">{{ result.feedback }}</div>
 
 {% endblock %}
