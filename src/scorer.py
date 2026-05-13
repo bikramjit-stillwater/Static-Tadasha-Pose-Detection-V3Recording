@@ -3,8 +3,12 @@ Tadasana (Mountain Pose) validator - Arms Overhead Version.
 
 Visibility rule:
   If a body part required for a step is NOT VISIBLE in the frame,
-  that step automatically scores 0 with a clear "not visible" message.
-  The 0 is included in the weighted average (penalizes missing body parts).
+  that step automatically scores 0.
+
+Score-zero hiding (NEW):
+  Any step whose score == 0 is marked `hide_from_ui = True` so the UI can skip
+  rendering that card. In the FINAL score calculation, those zero scores are
+  replaced with 50 (neutral), so a single zero does not crater the total.
 
 Target pose: standing tall with arms raised straight overhead, palms together,
 feet together or hip-width, body stretched upward like a mountain.
@@ -16,9 +20,6 @@ Compound penalties applied when multiple steps fail.
 import math
 
 
-# -----------------------------------------------------------------------------
-# Geometry helper
-# -----------------------------------------------------------------------------
 def calculate_angle(a, b, c):
     """Angle at point b formed by points a-b-c, in degrees."""
     ba = (a[0] - b[0], a[1] - b[1])
@@ -46,12 +47,7 @@ def score_value(deviation, ideal_max, fail_min, curve="quadratic"):
     return round(100.0 * (1.0 - progress), 1)
 
 
-# -----------------------------------------------------------------------------
-# "Not visible" result helpers
-# -----------------------------------------------------------------------------
 def _not_visible(step_num, name, body_part, cue):
-    """Return a step result for a body part that is NOT visible.
-    Score is 0 and the issue clearly says it's not visible."""
     return {
         "step": step_num,
         "name": name,
@@ -64,8 +60,7 @@ def _not_visible(step_num, name, body_part, cue):
 
 
 # =============================================================================
-# Step 1 - Stance: feet together or hip-width
-#   Required body parts: both ankles, both hips
+# Step 1 - Stance
 # =============================================================================
 def check_stance(features, visible=True):
     if not visible:
@@ -94,7 +89,6 @@ def check_stance(features, visible=True):
 
 # =============================================================================
 # Step 2 - Body Balance
-#   Required body parts: shoulders, hips, ankles
 # =============================================================================
 def check_body_balance(features, visible=True):
     if not visible:
@@ -117,7 +111,6 @@ def check_body_balance(features, visible=True):
 
 # =============================================================================
 # Step 3 - Legs & Knees
-#   Required body parts: hips, knees, ankles
 # =============================================================================
 def check_legs_knees(features, visible=True):
     if not visible:
@@ -169,7 +162,6 @@ def check_legs_knees(features, visible=True):
 
 # =============================================================================
 # Step 4 - Spine
-#   Required body parts: shoulders, hips
 # =============================================================================
 def check_spine(features, visible=True):
     if not visible:
@@ -192,7 +184,6 @@ def check_spine(features, visible=True):
 
 # =============================================================================
 # Step 5 - Shoulders & Arms (arms raised overhead)
-#   Required body parts: shoulders, elbows, wrists
 # =============================================================================
 def check_shoulders_arms(features, visible=True):
     if not visible:
@@ -260,7 +251,6 @@ def check_shoulders_arms(features, visible=True):
 
 # =============================================================================
 # Step 6 - Head & Neck
-#   Required body parts: nose, shoulders
 # =============================================================================
 def check_head_neutral(features, visible=True):
     if not visible:
@@ -281,18 +271,14 @@ def check_head_neutral(features, visible=True):
     }
 
 
-# Step weights (sum to 1.0)
 STEP_WEIGHTS = {1: 0.10, 2: 0.15, 3: 0.20, 4: 0.20, 5: 0.25, 6: 0.10}
 
 
 def validate_tadasana(features, step_visibility=None):
     """Run 6-step validation with compound penalties.
 
-    Args:
-        features: dict of geometric features (from build_features)
-        step_visibility: dict {step_num: True/False} - True if all body parts
-                         needed for that step are visible. If None, assumes
-                         all visible (backwards compatible).
+    NEW: Any step with score 0 is marked hide_from_ui=True and substituted
+    with effective_score=50 in the final formula.
     """
     if step_visibility is None:
         step_visibility = {i: True for i in range(1, 7)}
@@ -306,14 +292,26 @@ def validate_tadasana(features, step_visibility=None):
         check_head_neutral(features, step_visibility.get(6, True)),
     ]
 
+    # NEW: Mark zero-score steps for UI hiding, substitute 50 internally.
+    # This prevents a single "0" (whether from a hidden body part or a genuinely
+    # bad rep) from cratering the final score. The UI skips these cards entirely.
+    for s in step_results:
+        if s["score"] == 0.0:
+            s["hide_from_ui"] = True
+            s["effective_score"] = 50.0
+        else:
+            s["hide_from_ui"] = False
+            s["effective_score"] = s["score"]
+
+    # Final-score formula uses effective_score (50 for hidden steps)
     base_score = 0.0
     for s in step_results:
         s["weight"] = STEP_WEIGHTS[s["step"]]
-        base_score += s["score"] * s["weight"]
+        base_score += s["effective_score"] * s["weight"]
 
-    worst = min(s["score"] for s in step_results)
-    very_bad = sum(1 for s in step_results if s["score"] < 20)
-    critical = sum(1 for s in step_results if s["score"] < 40)
+    worst = min(s["effective_score"] for s in step_results)
+    very_bad = sum(1 for s in step_results if s["effective_score"] < 20)
+    critical = sum(1 for s in step_results if s["effective_score"] < 40)
 
     final_score = base_score
     if very_bad >= 2:
@@ -333,7 +331,9 @@ def validate_tadasana(features, step_visibility=None):
     final_score = int(round(final_score))
     final_score = max(0, min(100, final_score))
 
-    issues = [s["issue"] for s in step_results if s["issue"]]
+    # Don't include hidden steps in the visible issues list
+    issues = [s["issue"] for s in step_results
+              if s["issue"] and not s.get("hide_from_ui")]
 
     return {
         "final_score": final_score,
