@@ -620,3 +620,25 @@ h3 {
     color: #e2e8f0;
     white-space: pre-wrap;
 }
+
+/* ============================================================
+   ADD THESE STYLES TO THE END OF YOUR EXISTING styles.css
+   (works for both Childs Pose and Tadasana - same dark theme)
+   ============================================================ */
+ 
+.upload-status {
+    background: rgba(37, 99, 235, 0.15);
+    border: 1px dashed #3b82f6;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    color: #bfdbfe;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+ 
+.upload-status.error {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #fecaca;
+}
