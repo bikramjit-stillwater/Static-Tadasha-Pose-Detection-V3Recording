@@ -1,12 +1,12 @@
 """
 Pose analyzer for arms-overhead Tadasana.
 
-REFINED RULE for score-zero hiding:
-  - In aggregate_step_reports: hide_from_ui = not_visible_overall
-    (i.e., hide only if the body part was missing in most frames)
-  - In _single_frame_to_aggregated: propagate the hide_from_ui flag
-    already set by validate_tadasana() per step.
-  - A genuinely-bad pose where the body part WAS visible stays VISIBLE.
+REFINED RULES:
+  - Hide step cards in UI only if the body part was not_visible in most frames.
+  - NEW (bug fix): "Cannot evaluate - X not visible" messages NEVER show in
+    Top Issues panel. They're filtered at two levels (when collecting issues
+    per-frame, and at the final issues output).
+  - A genuinely-bad pose where the body part WAS visible stays VISIBLE in UI.
 """
 
 import cv2
@@ -17,6 +17,12 @@ from src.scorer import calculate_angle, validate_tadasana
 
 MIN_QUALITY_SCORE = 50
 VISIBILITY_THRESHOLD = 0.5
+
+
+def _is_not_visible_issue(issue_text):
+    """True if this issue is a 'Cannot evaluate - X not visible' message."""
+    return bool(issue_text) and issue_text.startswith("Cannot evaluate")
+
 
 POSE_LANDMARKS = {
     "nose": 0,
@@ -295,7 +301,9 @@ def aggregate_step_reports(all_reports):
                 fails += 1
             if s.get("not_visible"):
                 not_visible_count += 1
-            if s["issue"]:
+            # FIX: only collect issues from frames where the body part WAS visible.
+            # Skip "Cannot evaluate" / not_visible frame issues so they can't bubble up.
+            if s["issue"] and not s.get("not_visible") and not _is_not_visible_issue(s["issue"]):
                 issues_seen.append(s["issue"])
 
         avg = round(sum(scores) / len(scores), 1)
@@ -304,9 +312,6 @@ def aggregate_step_reports(all_reports):
         most_common = max(set(issues_seen), key=issues_seen.count) if issues_seen else None
 
         not_visible_overall = not_visible_rate > 50
-
-        # REFINED: hide step from UI ONLY if it was not_visible in most frames.
-        # Genuinely-bad scores stay visible.
         hide_from_ui = not_visible_overall
 
         aggregated_steps.append({
@@ -325,9 +330,13 @@ def aggregate_step_reports(all_reports):
     final_score = int(round(sum(finals) / len(finals)))
     final_score = max(0, min(100, final_score))
 
+    # SAFETY NET: exclude "Cannot evaluate" strings explicitly too
     significant_issues = [
         s["issue"] for s in aggregated_steps
-        if s["issue"] and s["fail_rate_percent"] >= 25 and not s.get("hide_from_ui")
+        if s["issue"]
+        and s["fail_rate_percent"] >= 25
+        and not s.get("hide_from_ui")
+        and not _is_not_visible_issue(s["issue"])
     ]
     return {
         "final_score": final_score,
@@ -354,8 +363,11 @@ def _single_frame_to_aggregated(report):
             "issue": s["issue"],
             "passed_overall": s["passed"] and not not_vis,
         })
+    # FIX + SAFETY NET: exclude hidden steps AND any "Cannot evaluate" strings
     issues = [s["issue"] for s in report["steps"]
-              if s.get("issue") and not s.get("hide_from_ui")]
+              if s.get("issue")
+              and not s.get("hide_from_ui")
+              and not _is_not_visible_issue(s["issue"])]
     return {
         "final_score": report["final_score"],
         "steps": aggregated_steps,
