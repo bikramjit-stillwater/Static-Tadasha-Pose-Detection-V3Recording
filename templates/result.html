@@ -76,14 +76,16 @@
 
 <div class="step-grid">
     {% for s in result.steps %}
-        {# Skip steps flagged hide_from_ui (score = 0) #}
         {% if not s.hide_from_ui %}
             {% set step_key = 'step_' ~ s.step %}
             {% set img = result.step_image_urls.get(step_key) %}
-            {% set passed = s.passed_overall %}
+
+            {# CHANGED: color/icon now based on score >= 50, not fail_rate #}
+            {% set passed = s.average_score >= 50 %}
             {% set pf_class = 'passed' if passed else 'failed' %}
             {% set score_class = 'pass' if passed else 'fail' %}
             {% set icon = '✅' if passed else '⚠️' %}
+
             {% if result.mode == 'photo' %}
                 {% set rate_label = 'Pass' if passed else 'Needs work' %}
             {% else %}
