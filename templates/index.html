@@ -1,9 +1,26 @@
 {% extends "base.html" %}
 
 {% block content %}
+<!-- Page header with title on left, Upload dropdown + info icon on right -->
 <div class="page-header">
-    <h1>🧘 Tadasana Pose Analysis</h1>
-    <div class="subtitle">Mountain Pose - Upload a video OR take a photo OR record live. Get a step-by-step alignment report.</div>
+    <div class="header-content">
+        <h1>🧘 Tadasana Pose Analysis</h1>
+        <div class="subtitle">Mountain Pose - Upload a video OR take a photo OR record live. Get a step-by-step alignment report.</div>
+    </div>
+    <div class="header-actions">
+        <div class="upload-dropdown">
+            <button class="dropdown-toggle" id="upload-toggle">
+                📁 Upload <span class="dropdown-caret">▾</span>
+            </button>
+            <div class="upload-options" id="upload-options">
+                <button class="tab-btn dropdown-item" data-tab="upload-video">📹 Upload Video</button>
+                <button class="tab-btn dropdown-item" data-tab="upload-photo">🖼️ Upload Photo</button>
+            </div>
+        </div>
+        <button class="info-btn" id="info-toggle" aria-label="How to capture" title="How to capture">
+            <span class="info-icon">i</span>
+        </button>
+    </div>
 </div>
 
 <!-- Info banner: hidden by default, shown when info button is clicked -->
@@ -21,30 +38,14 @@
     </div>
 </div>
 
-<!-- Heading row with info icon on the right -->
-<div class="capture-header-row">
-    <h2>Choose how to capture your pose</h2>
-    <button class="info-btn" id="info-toggle" aria-label="How to capture" title="How to capture">
-        <span class="info-icon">i</span>
-    </button>
-</div>
+<h2>Choose how to capture your pose</h2>
 
-<!-- Capture selector: Record Video button + Upload dropdown -->
+<!-- Only Record Video button here; Upload moved to header -->
 <div class="capture-selector">
     <button class="tab-btn active" data-tab="record-video">🎥 Record Video</button>
-
-    <div class="upload-dropdown">
-        <button class="dropdown-toggle" id="upload-toggle">
-            📁 Upload <span class="dropdown-caret">▾</span>
-        </button>
-        <div class="upload-options" id="upload-options">
-            <button class="tab-btn dropdown-item" data-tab="upload-video">📹 Upload Video</button>
-            <button class="tab-btn dropdown-item" data-tab="upload-photo">🖼️ Upload Photo</button>
-        </div>
-    </div>
 </div>
 
-<!-- Tab panels - Record Video is now the default active -->
+<!-- Tab panels - Record Video is default active -->
 <div class="tab-panel" id="tab-upload-video">
     <div class="upload-zone">
         <input type="file" id="video-file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,.mp4,.mov,.avi,.mkv" hidden>
