@@ -1,12 +1,10 @@
 """
-Pose analyzer for arms-overhead Tadasana.
+Pose analyzer for arms-overhead Tadasana - 5 STEPS (Stance removed).
 
-REFINED RULES:
-  - Hide step cards in UI only if the body part was not_visible in most frames.
-  - NEW (bug fix): "Cannot evaluate - X not visible" messages NEVER show in
-    Top Issues panel. They're filtered at two levels (when collecting issues
-    per-frame, and at the final issues output).
-  - A genuinely-bad pose where the body part WAS visible stays VISIBLE in UI.
+VISIBILITY RULES:
+  - Step 2 (Legs & Knees): requires only knees visible, not the full leg.
+  - Body Balance fallback to Spine handled in scorer.py.
+  - All other rules unchanged.
 """
 
 import cv2
@@ -20,7 +18,6 @@ VISIBILITY_THRESHOLD = 0.5
 
 
 def _is_not_visible_issue(issue_text):
-    """True if this issue is a 'Cannot evaluate - X not visible' message."""
     return bool(issue_text) and issue_text.startswith("Cannot evaluate")
 
 
@@ -36,16 +33,17 @@ POSE_LANDMARKS = {
     "left_foot_index": 31, "right_foot_index": 32,
 }
 
+# 5 STEPS - Stance removed, renumbered 1-5
 STEP_CRITICAL_LANDMARKS = {
-    1: ["left_ankle", "right_ankle", "left_hip", "right_hip"],
-    2: ["left_shoulder", "right_shoulder", "left_hip", "right_hip",
-        "left_ankle", "right_ankle"],
-    3: ["left_hip", "right_hip", "left_knee", "right_knee",
-        "left_ankle", "right_ankle"],
-    4: ["left_shoulder", "right_shoulder", "left_hip", "right_hip"],
-    5: ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
-        "left_wrist", "right_wrist"],
-    6: ["nose", "left_shoulder", "right_shoulder"],
+    1: ["left_shoulder", "right_shoulder", "left_hip", "right_hip",
+        "left_ankle", "right_ankle"],            # Body Balance
+    2: ["left_knee", "right_knee"],              # Legs & Knees - ONLY knees
+    3: ["left_shoulder", "right_shoulder",
+        "left_hip", "right_hip"],                # Spine
+    4: ["left_shoulder", "right_shoulder",
+        "left_elbow", "right_elbow",
+        "left_wrist", "right_wrist"],            # Shoulders & Arms
+    5: ["nose", "left_shoulder", "right_shoulder"],  # Head & Neck
 }
 
 
@@ -103,19 +101,12 @@ def build_features(lms, w, h):
     ra = extract_xy(lms, w, h, POSE_LANDMARKS["right_ankle"])
     nose = extract_xy(lms, w, h, POSE_LANDMARKS["nose"])
 
-    shoulder_tilt = abs(ls[1] - rs[1]) / h
-    hip_tilt = abs(lh[1] - rh[1]) / h
-
     body_center_x = ((ls[0] + rs[0]) / 2 + (lh[0] + rh[0]) / 2) / 2
     ankle_center_x = (la[0] + ra[0]) / 2
     body_lean = abs(body_center_x - ankle_center_x) / w
 
     left_knee_bend = calculate_angle(lh, lk, la)
     right_knee_bend = calculate_angle(rh, rk, ra)
-
-    ankle_distance = abs(la[0] - ra[0])
-    hip_distance = abs(lh[0] - rh[0])
-    stance_ratio = ankle_distance / hip_distance if hip_distance > 1 else 1.0
 
     mid_shoulders = midpoint(ls, rs)
     mid_hips = midpoint(lh, rh)
@@ -138,12 +129,9 @@ def build_features(lms, w, h):
     arm_closeness = abs(lw_pt[0] - rw_pt[0]) / w
 
     return {
-        "shoulder_tilt": shoulder_tilt,
-        "hip_tilt": hip_tilt,
         "body_lean": body_lean,
         "left_knee_bend": left_knee_bend,
         "right_knee_bend": right_knee_bend,
-        "stance_ratio": stance_ratio,
         "spine_tilt": spine_tilt,
         "head_offset": head_offset,
         "left_arm_drop": left_arm_drop,
@@ -207,31 +195,33 @@ def generate_step_images(frame, lms, step_results, save_dir):
     def dot(p, color, r=6):
         cv2.circle(annotated, (int(p[0]), int(p[1])), r, color, -1, cv2.LINE_AA)
 
-    c5 = color_for(5)
-    line(pts["left_shoulder"], pts["left_elbow"], c5)
-    line(pts["left_elbow"], pts["left_wrist"], c5)
-    line(pts["right_shoulder"], pts["right_elbow"], c5)
-    line(pts["right_elbow"], pts["right_wrist"], c5)
-    line(pts["left_shoulder"], pts["right_shoulder"], c5)
-
+    # Step 4 - Shoulders & Arms
     c4 = color_for(4)
+    line(pts["left_shoulder"], pts["left_elbow"], c4)
+    line(pts["left_elbow"], pts["left_wrist"], c4)
+    line(pts["right_shoulder"], pts["right_elbow"], c4)
+    line(pts["right_elbow"], pts["right_wrist"], c4)
+    line(pts["left_shoulder"], pts["right_shoulder"], c4)
+
+    # Step 3 - Spine
+    c3 = color_for(3)
     mid_sh = midpoint(pts["left_shoulder"], pts["right_shoulder"])
     mid_hp = midpoint(pts["left_hip"], pts["right_hip"])
-    line(mid_sh, mid_hp, c4, thick=5)
+    line(mid_sh, mid_hp, c3, thick=5)
 
-    c3 = color_for(3)
-    line(pts["left_hip"], pts["left_knee"], c3)
-    line(pts["left_knee"], pts["left_ankle"], c3)
-    line(pts["right_hip"], pts["right_knee"], c3)
-    line(pts["right_knee"], pts["right_ankle"], c3)
-    line(pts["left_hip"], pts["right_hip"], c3)
+    # Step 2 - Legs & Knees
+    c2 = color_for(2)
+    line(pts["left_hip"], pts["left_knee"], c2)
+    line(pts["left_knee"], pts["left_ankle"], c2)
+    line(pts["right_hip"], pts["right_knee"], c2)
+    line(pts["right_knee"], pts["right_ankle"], c2)
+    line(pts["left_hip"], pts["right_hip"], c2)
 
-    c1 = color_for(1)
-    line(pts["left_ankle"], pts["right_ankle"], c1, thick=3)
+    # Step 5 - Head & Neck
+    c5 = color_for(5)
+    dot(pts["nose"], c5, r=10)
 
-    c6 = color_for(6)
-    dot(pts["nose"], c6, r=10)
-
+    # Landmark dots
     for name in ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
                  "left_wrist", "right_wrist", "left_hip", "right_hip",
                  "left_knee", "right_knee", "left_ankle", "right_ankle"]:
@@ -241,41 +231,39 @@ def generate_step_images(frame, lms, step_results, save_dir):
     cv2.imwrite(annotated_path, annotated)
     paths["annotated"] = annotated_path
 
-    feet_pts = [pts["left_ankle"], pts["right_ankle"],
-                pts["left_heel"], pts["right_heel"],
-                pts["left_foot_index"], pts["right_foot_index"]]
-    crop = _crop_with_padding(annotated, feet_pts, 0.15, 0.10)
-    p1 = os.path.join(save_dir, "step1_stance.jpg")
-    cv2.imwrite(p1, crop); paths["step_1"] = p1
+    # Step 1 image - Body Balance (full body view)
+    p1 = os.path.join(save_dir, "step1_body_balance.jpg")
+    cv2.imwrite(p1, annotated); paths["step_1"] = p1
 
-    p2 = os.path.join(save_dir, "step2_body_balance.jpg")
-    cv2.imwrite(p2, annotated); paths["step_2"] = p2
-
+    # Step 2 image - Legs & Knees
     leg_pts = [pts["left_hip"], pts["right_hip"],
                pts["left_knee"], pts["right_knee"],
                pts["left_ankle"], pts["right_ankle"]]
     crop = _crop_with_padding(annotated, leg_pts, 0.12, 0.05)
-    p3 = os.path.join(save_dir, "step3_legs_knees.jpg")
-    cv2.imwrite(p3, crop); paths["step_3"] = p3
+    p2 = os.path.join(save_dir, "step2_legs_knees.jpg")
+    cv2.imwrite(p2, crop); paths["step_2"] = p2
 
+    # Step 3 image - Spine
     spine_pts = [pts["left_shoulder"], pts["right_shoulder"],
                  pts["left_hip"], pts["right_hip"]]
     crop = _crop_with_padding(annotated, spine_pts, 0.18, 0.05)
-    p4 = os.path.join(save_dir, "step4_spine.jpg")
-    cv2.imwrite(p4, crop); paths["step_4"] = p4
+    p3 = os.path.join(save_dir, "step3_spine.jpg")
+    cv2.imwrite(p3, crop); paths["step_3"] = p3
 
+    # Step 4 image - Shoulders & Arms
     arm_pts = [pts["left_shoulder"], pts["right_shoulder"],
                pts["left_elbow"], pts["right_elbow"],
                pts["left_wrist"], pts["right_wrist"],
                pts["left_hip"], pts["right_hip"]]
     crop = _crop_with_padding(annotated, arm_pts, 0.10, 0.10)
-    p5 = os.path.join(save_dir, "step5_shoulders_arms.jpg")
-    cv2.imwrite(p5, crop); paths["step_5"] = p5
+    p4 = os.path.join(save_dir, "step4_shoulders_arms.jpg")
+    cv2.imwrite(p4, crop); paths["step_4"] = p4
 
+    # Step 5 image - Head & Neck
     head_pts = [pts["nose"], pts["left_shoulder"], pts["right_shoulder"]]
     crop = _crop_with_padding(annotated, head_pts, 0.15, 0.20)
-    p6 = os.path.join(save_dir, "step6_head_neck.jpg")
-    cv2.imwrite(p6, crop); paths["step_6"] = p6
+    p5 = os.path.join(save_dir, "step5_head_neck.jpg")
+    cv2.imwrite(p5, crop); paths["step_5"] = p5
 
     return paths
 
@@ -301,8 +289,6 @@ def aggregate_step_reports(all_reports):
                 fails += 1
             if s.get("not_visible"):
                 not_visible_count += 1
-            # FIX: only collect issues from frames where the body part WAS visible.
-            # Skip "Cannot evaluate" / not_visible frame issues so they can't bubble up.
             if s["issue"] and not s.get("not_visible") and not _is_not_visible_issue(s["issue"]):
                 issues_seen.append(s["issue"])
 
@@ -330,7 +316,6 @@ def aggregate_step_reports(all_reports):
     final_score = int(round(sum(finals) / len(finals)))
     final_score = max(0, min(100, final_score))
 
-    # SAFETY NET: exclude "Cannot evaluate" strings explicitly too
     significant_issues = [
         s["issue"] for s in aggregated_steps
         if s["issue"]
@@ -363,7 +348,6 @@ def _single_frame_to_aggregated(report):
             "issue": s["issue"],
             "passed_overall": s["passed"] and not not_vis,
         })
-    # FIX + SAFETY NET: exclude hidden steps AND any "Cannot evaluate" strings
     issues = [s["issue"] for s in report["steps"]
               if s.get("issue")
               and not s.get("hide_from_ui")
