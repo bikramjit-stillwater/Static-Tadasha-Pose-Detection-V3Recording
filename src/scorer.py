@@ -11,10 +11,9 @@ Tadasana (Mountain Pose) validator - Arms Overhead Version.
 VISIBILITY RULES:
   - If a body part required for a step is NOT VISIBLE, that step is hidden
     from UI and substituted with effective_score=50 (default).
-  - SPECIAL FALLBACK: Body Balance (step 1) uses Spine's score when
-    Body Balance isn't visible but Spine is.
-  - A step that genuinely scored 0 due to bad pose stays VISIBLE with
-    its raw score (no substitution).
+  - SPECIAL FALLBACK: Body Balance (step 1) takes Spine's (step 3) score
+    when Body Balance isn't visible but Spine is - AND the Body Balance
+    card is SHOWN with that score (not hidden, not listed as missing).
 """
 
 import math
@@ -56,7 +55,7 @@ def _not_visible(step_num, name, body_part, cue):
 
 
 def check_body_balance(features, visible=True):
-    """Step 1 - Body Balance. Falls back to Spine score when not visible."""
+    """Step 1 - Body Balance. Falls back to Spine when not visible (shown with Spine's score)."""
     if not visible:
         return _not_visible(1, "Body Balance", "full body (shoulders, hips, feet)",
                             "Press the four corners of each foot into the floor evenly")
@@ -73,7 +72,7 @@ def check_body_balance(features, visible=True):
 
 
 def check_legs_knees(features, visible=True):
-    """Step 2 - Legs & Knees. Only requires knees visible."""
+    """Step 2 - Legs & Knees. Only requires at least ONE knee visible (handled in analyzer)."""
     if not visible:
         return _not_visible(2, "Legs & Knees", "knees",
                             "Lift kneecaps gently - straight but never locked")
@@ -214,7 +213,6 @@ def check_head_neutral(features, visible=True):
     }
 
 
-# NEW: 5 steps - weights re-normalized to total 100%
 STEP_WEIGHTS = {1: 0.15, 2: 0.25, 3: 0.25, 4: 0.25, 5: 0.10}
 
 
@@ -239,15 +237,18 @@ def validate_tadasana(features, step_visibility=None):
             s["hide_from_ui"] = False
             s["effective_score"] = s["score"]
 
-    # SPECIAL FALLBACK: Body Balance (step 1) uses Spine's (step 3) score
+    # SPECIAL FALLBACK: Body Balance (step 1) takes Spine's (step 3) data
     # when Body Balance isn't visible but Spine is.
+    # The Body Balance card is SHOWN with Spine's score.
     balance = step_results[0]   # step 1
     spine = step_results[2]     # step 3
     if balance.get("not_visible") and not spine.get("not_visible"):
+        balance["score"] = spine["score"]
         balance["effective_score"] = spine["effective_score"]
-        # Keep not_visible=True and hide_from_ui=True so the card stays hidden
-        # and the "couldn't be evaluated" notice still lists Body Balance.
-        # But the formula uses Spine's score for Body Balance's weight contribution.
+        balance["passed"] = spine["passed"]
+        balance["issue"] = None             # No issue - using spine as proxy
+        balance["not_visible"] = False      # Cleared - has a real score now
+        balance["hide_from_ui"] = False     # Show the card in UI
 
     # Weighted base score
     base_score = 0.0
