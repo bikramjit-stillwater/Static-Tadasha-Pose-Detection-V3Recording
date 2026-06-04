@@ -1,8 +1,11 @@
 """
 Pose analyzer for arms-overhead Tadasana - 5 STEPS (Stance removed).
 
-VISIBILITY RULES:
-  - Step 2 (Legs & Knees): requires only knees visible, not the full leg.
+VISIBILITY RULES (BUGFIX):
+  - Step 2 (Legs & Knees): requires only ONE knee visible (left OR right),
+    with a more lenient visibility threshold (0.3 vs default 0.5).
+    This prevents false "not visible" when knees are clearly in frame
+    but MediaPipe gives low visibility scores (e.g., due to pants).
   - Body Balance fallback to Spine handled in scorer.py.
   - All other rules unchanged.
 """
@@ -15,6 +18,7 @@ from src.scorer import calculate_angle, validate_tadasana
 
 MIN_QUALITY_SCORE = 50
 VISIBILITY_THRESHOLD = 0.5
+KNEE_VISIBILITY_THRESHOLD = 0.3   # lenient threshold for knees specifically
 
 
 def _is_not_visible_issue(issue_text):
@@ -33,11 +37,11 @@ POSE_LANDMARKS = {
     "left_foot_index": 31, "right_foot_index": 32,
 }
 
-# 5 STEPS - Stance removed, renumbered 1-5
+# Step 2 (Legs & Knees) is handled specially in get_step_visibility() below.
 STEP_CRITICAL_LANDMARKS = {
     1: ["left_shoulder", "right_shoulder", "left_hip", "right_hip",
         "left_ankle", "right_ankle"],            # Body Balance
-    2: ["left_knee", "right_knee"],              # Legs & Knees - ONLY knees
+    2: ["left_knee", "right_knee"],              # Legs & Knees - any one knee
     3: ["left_shoulder", "right_shoulder",
         "left_hip", "right_hip"],                # Spine
     4: ["left_shoulder", "right_shoulder",
@@ -64,9 +68,9 @@ def angle_from_vertical(p_top, p_bottom):
     return math.degrees(math.atan2(abs(dx), abs(dy)))
 
 
-def landmark_is_visible(lms, idx):
+def landmark_is_visible(lms, idx, threshold=VISIBILITY_THRESHOLD):
     lm = lms[idx]
-    if lm.visibility < VISIBILITY_THRESHOLD:
+    if lm.visibility < threshold:
         return False
     if lm.x < 0.0 or lm.x > 1.0 or lm.y < 0.0 or lm.y > 1.0:
         return False
@@ -74,15 +78,27 @@ def landmark_is_visible(lms, idx):
 
 
 def get_step_visibility(lms):
+    """
+    Step 2 (Legs & Knees) requires ONLY ONE knee visible, with a lower
+    threshold (0.3). All other steps use the default visibility check
+    where every listed landmark must be visible at threshold 0.5.
+    """
     result = {}
     for step_num, names in STEP_CRITICAL_LANDMARKS.items():
-        all_visible = True
-        for name in names:
-            idx = POSE_LANDMARKS[name]
-            if not landmark_is_visible(lms, idx):
-                all_visible = False
-                break
-        result[step_num] = all_visible
+        if step_num == 2:
+            # Lenient: any one knee at lower threshold = OK
+            left_ok = landmark_is_visible(
+                lms, POSE_LANDMARKS["left_knee"], KNEE_VISIBILITY_THRESHOLD)
+            right_ok = landmark_is_visible(
+                lms, POSE_LANDMARKS["right_knee"], KNEE_VISIBILITY_THRESHOLD)
+            result[step_num] = left_ok or right_ok
+        else:
+            all_visible = True
+            for name in names:
+                if not landmark_is_visible(lms, POSE_LANDMARKS[name]):
+                    all_visible = False
+                    break
+            result[step_num] = all_visible
     return result
 
 
@@ -231,7 +247,7 @@ def generate_step_images(frame, lms, step_results, save_dir):
     cv2.imwrite(annotated_path, annotated)
     paths["annotated"] = annotated_path
 
-    # Step 1 image - Body Balance (full body view)
+    # Step 1 image - Body Balance (full body)
     p1 = os.path.join(save_dir, "step1_body_balance.jpg")
     cv2.imwrite(p1, annotated); paths["step_1"] = p1
 
