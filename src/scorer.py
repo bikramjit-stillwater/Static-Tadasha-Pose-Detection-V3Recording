@@ -1,15 +1,20 @@
 """
 Tadasana (Mountain Pose) validator - Arms Overhead Version.
 
-Visibility rule:
-  If a body part required for a step is NOT VISIBLE, that step scores 0
-  with a clear "not visible" message.
+5 STEPS (Stance step removed):
+  1. Body Balance      (15%)
+  2. Legs & Knees      (25%)
+  3. Spine             (25%)
+  4. Shoulders & Arms  (25%)
+  5. Head & Neck       (10%)
 
-SCORE-ZERO HIDING (refined logic):
-  Only steps marked `not_visible = True` are hidden from UI and substituted
-  with effective_score=50 in the formula. A step that GENUINELY scored 0
-  due to a bad pose (e.g., arms not raised) stays VISIBLE in the UI and
-  uses its raw score (0) in the formula.
+VISIBILITY RULES:
+  - If a body part required for a step is NOT VISIBLE, that step is hidden
+    from UI and substituted with effective_score=50 (default).
+  - SPECIAL FALLBACK: Body Balance (step 1) uses Spine's score when
+    Body Balance isn't visible but Spine is.
+  - A step that genuinely scored 0 due to bad pose stays VISIBLE with
+    its raw score (no substitution).
 """
 
 import math
@@ -50,37 +55,16 @@ def _not_visible(step_num, name, body_part, cue):
     }
 
 
-def check_stance(features, visible=True):
-    if not visible:
-        return _not_visible(1, "Stance", "feet",
-                            "Stand with feet together or at hip-distance")
-    ratio = features["stance_ratio"]
-    if ratio <= 1.1:
-        return {
-            "step": 1, "name": "Stance",
-            "passed": True, "score": 100.0, "issue": None,
-            "cue": "Stand with feet together or at hip-distance",
-            "not_visible": False,
-        }
-    score = score_value(ratio - 1.1, 0.0, 0.6, "quadratic")
-    return {
-        "step": 1, "name": "Stance",
-        "passed": ratio <= 1.25, "score": score,
-        "issue": "Feet are too far apart - bring them to hip-width or together",
-        "cue": "Stand with feet together or at hip-distance",
-        "not_visible": False,
-    }
-
-
 def check_body_balance(features, visible=True):
+    """Step 1 - Body Balance. Falls back to Spine score when not visible."""
     if not visible:
-        return _not_visible(2, "Body Balance", "full body (shoulders, hips, feet)",
+        return _not_visible(1, "Body Balance", "full body (shoulders, hips, feet)",
                             "Press the four corners of each foot into the floor evenly")
     body_lean = features["body_lean"]
     score = score_value(body_lean, 0.025, 0.09, "quadratic")
     passed = body_lean <= 0.04
     return {
-        "step": 2, "name": "Body Balance",
+        "step": 1, "name": "Body Balance",
         "passed": passed, "score": score,
         "issue": None if passed else "Body is leaning - distribute weight evenly across both feet",
         "cue": "Press the four corners of each foot into the floor evenly",
@@ -89,8 +73,9 @@ def check_body_balance(features, visible=True):
 
 
 def check_legs_knees(features, visible=True):
+    """Step 2 - Legs & Knees. Only requires knees visible."""
     if not visible:
-        return _not_visible(3, "Legs & Knees", "legs (hips, knees, ankles)",
+        return _not_visible(2, "Legs & Knees", "knees",
                             "Lift kneecaps gently - straight but never locked")
     left = features["left_knee_bend"]
     right = features["right_knee_bend"]
@@ -99,7 +84,7 @@ def check_legs_knees(features, visible=True):
 
     if not bent and not locked:
         return {
-            "step": 3, "name": "Legs & Knees",
+            "step": 2, "name": "Legs & Knees",
             "passed": True, "score": 100.0, "issue": None,
             "cue": "Lift kneecaps gently - straight but never locked",
             "not_visible": False,
@@ -107,7 +92,7 @@ def check_legs_knees(features, visible=True):
     if locked and not bent:
         worst = max(left, right)
         return {
-            "step": 3, "name": "Legs & Knees",
+            "step": 2, "name": "Legs & Knees",
             "passed": False,
             "score": score_value(worst - 178, 0.0, 6.0, "quadratic"),
             "issue": "Knees are locked - keep them soft and active, not rigid",
@@ -117,7 +102,7 @@ def check_legs_knees(features, visible=True):
     if bent and not locked:
         worst = min(left, right)
         return {
-            "step": 3, "name": "Legs & Knees",
+            "step": 2, "name": "Legs & Knees",
             "passed": False,
             "score": score_value(168 - worst, 0.0, 18.0, "quadratic"),
             "issue": "Knees are bent - gently straighten without locking",
@@ -125,7 +110,7 @@ def check_legs_knees(features, visible=True):
             "not_visible": False,
         }
     return {
-        "step": 3, "name": "Legs & Knees",
+        "step": 2, "name": "Legs & Knees",
         "passed": False, "score": 30.0,
         "issue": "One knee bent and the other locked - aim for soft and even",
         "cue": "Lift kneecaps gently - straight but never locked",
@@ -134,14 +119,15 @@ def check_legs_knees(features, visible=True):
 
 
 def check_spine(features, visible=True):
+    """Step 3 - Spine."""
     if not visible:
-        return _not_visible(4, "Spine", "torso (shoulders and hips)",
+        return _not_visible(3, "Spine", "torso (shoulders and hips)",
                             "Lengthen the spine - tailbone tucks down, crown lifts up")
     spine_tilt = features["spine_tilt"]
     score = score_value(spine_tilt, 2.5, 11.0, "quadratic")
     passed = spine_tilt <= 5.0
     return {
-        "step": 4, "name": "Spine",
+        "step": 3, "name": "Spine",
         "passed": passed, "score": score,
         "issue": None if passed else "Spine is not vertical - tailbone down, crown of head up",
         "cue": "Lengthen the spine - tailbone tucks down, crown lifts up",
@@ -150,8 +136,9 @@ def check_spine(features, visible=True):
 
 
 def check_shoulders_arms(features, visible=True):
+    """Step 4 - Shoulders & Arms (arms overhead)."""
     if not visible:
-        return _not_visible(5, "Shoulders & Arms", "arms (shoulders, elbows, wrists)",
+        return _not_visible(4, "Shoulders & Arms", "arms (shoulders, elbows, wrists)",
                             "Stretch arms straight up overhead, palms together, elbows straight")
     v_left = features["left_arm_drop"]
     v_right = features["right_arm_drop"]
@@ -202,7 +189,7 @@ def check_shoulders_arms(features, visible=True):
     issue = " - ".join(issues) if issues else None
 
     return {
-        "step": 5, "name": "Shoulders & Arms",
+        "step": 4, "name": "Shoulders & Arms",
         "passed": passed, "score": score,
         "issue": issue,
         "cue": "Stretch arms straight up overhead, palms together, elbows straight",
@@ -211,14 +198,15 @@ def check_shoulders_arms(features, visible=True):
 
 
 def check_head_neutral(features, visible=True):
+    """Step 5 - Head & Neck."""
     if not visible:
-        return _not_visible(6, "Head & Neck", "head and shoulders",
+        return _not_visible(5, "Head & Neck", "head and shoulders",
                             "Keep the head balanced between the arms, gaze soft and forward")
     head_offset = features["head_offset"]
     score = score_value(head_offset, 0.03, 0.11, "quadratic")
     passed = head_offset <= 0.06
     return {
-        "step": 6, "name": "Head & Neck",
+        "step": 5, "name": "Head & Neck",
         "passed": passed, "score": score,
         "issue": None if passed else "Head is tilting - keep it balanced, gaze forward",
         "cue": "Keep the head balanced between the arms, gaze soft and forward",
@@ -226,25 +214,23 @@ def check_head_neutral(features, visible=True):
     }
 
 
-STEP_WEIGHTS = {1: 0.10, 2: 0.15, 3: 0.20, 4: 0.20, 5: 0.25, 6: 0.10}
+# NEW: 5 steps - weights re-normalized to total 100%
+STEP_WEIGHTS = {1: 0.15, 2: 0.25, 3: 0.25, 4: 0.25, 5: 0.10}
 
 
 def validate_tadasana(features, step_visibility=None):
     if step_visibility is None:
-        step_visibility = {i: True for i in range(1, 7)}
+        step_visibility = {i: True for i in range(1, 6)}
 
     step_results = [
-        check_stance(features, step_visibility.get(1, True)),
-        check_body_balance(features, step_visibility.get(2, True)),
-        check_legs_knees(features, step_visibility.get(3, True)),
-        check_spine(features, step_visibility.get(4, True)),
-        check_shoulders_arms(features, step_visibility.get(5, True)),
-        check_head_neutral(features, step_visibility.get(6, True)),
+        check_body_balance(features, step_visibility.get(1, True)),
+        check_legs_knees(features, step_visibility.get(2, True)),
+        check_spine(features, step_visibility.get(3, True)),
+        check_shoulders_arms(features, step_visibility.get(4, True)),
+        check_head_neutral(features, step_visibility.get(5, True)),
     ]
 
-    # REFINED LOGIC:
-    # Only NOT-VISIBLE steps get hidden + substituted with 50.
-    # A step that genuinely scored 0 due to bad pose STAYS VISIBLE with score 0.
+    # Default substitution: not_visible → effective_score 50 + hidden card
     for s in step_results:
         if s.get("not_visible"):
             s["hide_from_ui"] = True
@@ -253,6 +239,17 @@ def validate_tadasana(features, step_visibility=None):
             s["hide_from_ui"] = False
             s["effective_score"] = s["score"]
 
+    # SPECIAL FALLBACK: Body Balance (step 1) uses Spine's (step 3) score
+    # when Body Balance isn't visible but Spine is.
+    balance = step_results[0]   # step 1
+    spine = step_results[2]     # step 3
+    if balance.get("not_visible") and not spine.get("not_visible"):
+        balance["effective_score"] = spine["effective_score"]
+        # Keep not_visible=True and hide_from_ui=True so the card stays hidden
+        # and the "couldn't be evaluated" notice still lists Body Balance.
+        # But the formula uses Spine's score for Body Balance's weight contribution.
+
+    # Weighted base score
     base_score = 0.0
     for s in step_results:
         s["weight"] = STEP_WEIGHTS[s["step"]]
