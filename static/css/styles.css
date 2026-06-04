@@ -1,43 +1,139 @@
 /* ============================================================
-   APPEND THESE STYLES TO THE END OF YOUR EXISTING styles.css
-   (works for both Childs Pose and Tadasana - identical file)
+   Pose Analysis - Dark theme stylesheet (COMPLETE FILE)
+   Works for both Childs Pose and Tadasana apps - identical file.
    ============================================================ */
 
-/* Info banner: hidden by default, shows when info button is clicked */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: #0b1220;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    line-height: 1.5;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* ============================================================
+   Page header - title on left, action buttons on right
+   ============================================================ */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #334155;
+    flex-wrap: wrap;
+}
+.header-content {
+    flex: 1;
+    min-width: 250px;
+}
+.page-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #FFFFFF;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+.page-header .subtitle {
+    font-size: 0.875rem;
+    color: #cbd5e1;
+    margin-top: 0.35rem;
+}
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    padding-top: 0.25rem;
+}
+
+h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #FFFFFF;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    margin-top: 0.5rem;
+    margin-bottom: 0.4rem;
+}
+
+/* ============================================================
+   How-to-capture banner (hidden by default, shown via info button)
+   ============================================================ */
 .side-view-banner {
     display: none;
+    background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    color: white;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.25);
+    border: 1px solid #3b82f6;
 }
 .side-view-banner.show {
     display: block;
 }
-
-/* Heading row with info button on the right */
-.capture-header-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 1.5rem;
-    margin-bottom: 0.75rem;
-    gap: 0.75rem;
+.side-view-banner .label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #bfdbfe;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
 }
-.capture-header-row h2 {
-    margin: 0 !important;
-    flex: 1;
+.side-view-banner .title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.3rem;
+}
+.side-view-banner .body-text {
+    font-size: 0.85rem;
+    color: #dbeafe;
+    line-height: 1.5;
+}
+.side-view-banner ul {
+    margin: 0.4rem 0 0 1.2rem;
+}
+.side-view-banner li {
+    margin: 0.15rem 0;
+    color: #dbeafe;
 }
 
-/* Info button (i icon) */
+/* ============================================================
+   Info button (i icon) - in page header right side
+   ============================================================ */
 .info-btn {
     background: #1e293b;
     color: #cbd5e1;
     border: 1px solid #334155;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.95rem;
+    font-size: 1rem;
     font-weight: 700;
     font-family: Georgia, "Times New Roman", serif;
     font-style: italic;
@@ -61,36 +157,26 @@
     line-height: 1;
 }
 
-/* Capture selector layout: Record Video + Upload dropdown */
-.capture-selector {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    align-items: center;
-    position: relative;
-}
-
-/* Upload dropdown container */
+/* ============================================================
+   Upload dropdown (in page header right side)
+   ============================================================ */
 .upload-dropdown {
     position: relative;
     display: inline-block;
 }
-
-/* Upload dropdown toggle button */
 .dropdown-toggle {
     background: #1e293b;
     color: #cbd5e1;
     border: 1px solid #334155;
-    padding: 0.7rem 1.2rem;
+    padding: 0.6rem 1rem;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     font-weight: 600;
     transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
 }
 .dropdown-toggle:hover {
     background: #334155;
@@ -102,16 +188,16 @@
     border-color: #2563eb;
 }
 .dropdown-caret {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     opacity: 0.85;
 }
 
-/* Dropdown menu (hidden by default) */
+/* Dropdown menu */
 .upload-options {
     display: none;
     position: absolute;
     top: 100%;
-    left: 0;
+    right: 0;
     margin-top: 0.4rem;
     background: #1e293b;
     border: 1px solid #334155;
@@ -125,8 +211,6 @@
 .upload-options.show {
     display: block;
 }
-
-/* Dropdown items override .tab-btn styling */
 .upload-options .dropdown-item {
     display: block;
     width: 100%;
@@ -150,4 +234,621 @@
 .upload-options .dropdown-item.active {
     background: rgba(37, 99, 235, 0.25);
     color: white;
+}
+
+/* ============================================================
+   Capture selector (only Record Video button now)
+   ============================================================ */
+.capture-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Tab buttons base (Record Video + dropdown items) */
+.tab-btn {
+    background: #1e293b;
+    color: #cbd5e1;
+    border: 1px solid #334155;
+    padding: 0.7rem 1.4rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+.tab-btn:hover {
+    background: #334155;
+    color: white;
+}
+.tab-btn.active {
+    background: #2563eb;
+    color: white;
+    border-color: #2563eb;
+}
+
+/* ============================================================
+   Tab panels (only the active one is visible - CRITICAL)
+   ============================================================ */
+.tab-panel {
+    display: none;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+.tab-panel.active {
+    display: block;
+}
+
+/* ============================================================
+   Upload zones
+   ============================================================ */
+.upload-zone {
+    text-align: center;
+}
+.upload-label {
+    display: block;
+    padding: 2rem;
+    border: 2px dashed #475569;
+    border-radius: 10px;
+    background-color: #0f172a;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.upload-label:hover {
+    border-color: #3b82f6;
+    background-color: #1e2030;
+}
+.upload-icon {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+}
+.upload-text {
+    font-size: 1rem;
+    color: #FFFFFF;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+.upload-hint {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+.upload-preview {
+    margin-top: 1rem;
+}
+.upload-preview img,
+.upload-preview video {
+    max-width: 100%;
+    max-height: 360px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+/* Upload status (the "Preparing..." message) */
+.upload-status {
+    background: rgba(37, 99, 235, 0.15);
+    border: 1px dashed #3b82f6;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    color: #bfdbfe;
+    font-size: 0.9rem;
+    text-align: center;
+    margin-top: 0.5rem;
+}
+.upload-status.error {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: #ef4444;
+    color: #fecaca;
+}
+
+/* ============================================================
+   Recording UI
+   ============================================================ */
+.record-zone {
+    text-align: center;
+}
+.record-preview-wrap {
+    position: relative;
+    background: #000;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    aspect-ratio: 16/9;
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+}
+#record-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #0f172a;
+}
+.record-timer {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: rgba(0,0,0,0.7);
+    color: #ff5252;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: none;
+}
+.record-timer.active {
+    display: block;
+}
+
+.record-controls {
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+}
+.record-btn {
+    padding: 0.65rem 1.4rem;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.15s;
+}
+.record-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+.record-btn.primary { background: #2563eb; color: white; }
+.record-btn.primary:hover:not(:disabled) { background: #1d4ed8; }
+.record-btn.record { background: #dc2626; color: white; }
+.record-btn.record:hover:not(:disabled) { background: #b91c1c; }
+.record-btn.stop { background: #475569; color: white; }
+.record-btn.stop:hover:not(:disabled) { background: #64748b; }
+.record-btn.ghost {
+    background: transparent;
+    color: #94a3b8;
+    border: 1px solid #475569;
+}
+.record-btn.ghost:hover {
+    background: #1e293b;
+}
+.record-hint {
+    font-size: 0.8rem;
+    color: #94a3b8;
+}
+
+/* ============================================================
+   Action buttons (Analyze, back, etc.)
+   ============================================================ */
+.action-row {
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+.primary-btn {
+    background: #2563eb;
+    color: white;
+    font-weight: 700;
+    padding: 0.9rem 2.5rem;
+    border-radius: 10px;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 14px rgba(37,99,235,0.3);
+}
+.primary-btn:hover:not(:disabled) {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(37,99,235,0.4);
+}
+.primary-btn:disabled {
+    background: #475569;
+    cursor: not-allowed;
+    opacity: 0.6;
+    box-shadow: none;
+}
+.back-btn {
+    display: inline-block;
+    background: #1e3a5f;
+    color: white;
+    font-weight: 600;
+    padding: 0.55rem 1.5rem;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: all 0.15s;
+}
+.back-btn:hover {
+    background: #0f172a;
+    transform: translateY(-1px);
+}
+
+/* ============================================================
+   Loading overlay
+   ============================================================ */
+.loading-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(11,18,32,0.92);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+.loading-overlay.active {
+    display: flex;
+}
+.loading-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    padding: 2.5rem 3rem;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #334155;
+    border-top-color: #2563eb;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.3rem;
+}
+.loading-subtext {
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+/* ============================================================
+   Result banners
+   ============================================================ */
+.error-banner {
+    background: rgba(239,68,68,0.15);
+    border-left: 4px solid #ef4444;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    color: #fecaca;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.error-banner strong { color: white; }
+.warning-banner {
+    background: rgba(245,158,11,0.15);
+    border-left: 4px solid #f59e0b;
+    border-radius: 8px;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1rem;
+    color: #fde68a;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* ============================================================
+   Results hero
+   ============================================================ */
+.hero-row {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+@media (max-width: 768px) {
+    .hero-row { grid-template-columns: 1fr; }
+}
+
+.score-hero {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+    border-radius: 14px;
+    padding: 1.5rem;
+    color: white;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    border: 1px solid #1e293b;
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.score-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-bottom: 0.4rem;
+}
+.score-line { line-height: 1; }
+.score-value {
+    font-size: 4rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.04em;
+}
+.score-suffix {
+    font-size: 1.5rem;
+    color: #94a3b8;
+    font-weight: 400;
+}
+.score-band {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 100px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-top: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.band-excellent { background: #10b981; color: white; }
+.band-good      { background: #3b82f6; color: white; }
+.band-mixed     { background: #f59e0b; color: white; }
+.band-poor      { background: #ef4444; color: white; }
+.input-mode-tag {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 100px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    background: rgba(255,255,255,0.15);
+    color: #e2e8f0;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.issues-block { margin-top: 1.5rem; }
+.issues-block h4 {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #94a3b8;
+    font-weight: 600;
+    margin: 0 0 0.6rem 0;
+}
+.issue-item {
+    background: rgba(255,255,255,0.08);
+    border-left: 3px solid #fbbf24;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.4rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: #e2e8f0;
+    line-height: 1.4;
+}
+.no-issues {
+    background: rgba(16,185,129,0.15);
+    border-left: 3px solid #10b981;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: #d1fae5;
+}
+
+.image-card {
+    background: #1e293b;
+    border-radius: 14px;
+    padding: 1rem;
+    border: 1px solid #334155;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+    min-height: 380px;
+    display: flex;
+    flex-direction: column;
+}
+.image-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}
+.image-card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: white;
+}
+.image-card-legend {
+    font-size: 0.7rem;
+    color: #94a3b8;
+}
+.legend-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+}
+.annotated-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.annotated-wrap img {
+    max-height: 340px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+/* ============================================================
+   Step cards (results grid)
+   ============================================================ */
+.step-caption {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-bottom: 0.6rem;
+}
+.step-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+@media (max-width: 900px) {
+    .step-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+    .step-grid { grid-template-columns: 1fr; }
+}
+
+.step-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    padding: 0.85rem;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    transition: all 0.15s ease;
+    display: flex;
+    flex-direction: column;
+}
+.step-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    transform: translateY(-1px);
+}
+.step-card.passed { border-left: 3px solid #10b981; }
+.step-card.failed { border-left: 3px solid #ef4444; }
+.step-card.notvisible {
+    border-left: 3px solid #9ca3af;
+    background: #0f172a;
+}
+
+.step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.step-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: white;
+    line-height: 1.2;
+}
+.step-card.notvisible .step-name { color: #94a3b8; }
+.step-status-icon { font-size: 1.1rem; }
+
+.step-score-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #334155;
+}
+.step-score-big {
+    font-size: 1.4rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.step-score-big.pass { color: #10b981; }
+.step-score-big.fail { color: #ef4444; }
+.step-score-big.notvisible { color: #9ca3af; }
+.step-score-suffix { font-size: 0.75rem; color: #94a3b8; }
+.step-fail-rate { font-size: 0.7rem; color: #94a3b8; }
+
+.step-image-wrap {
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #0f172a;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+.step-image-wrap img {
+    max-height: 180px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.step-issue {
+    background: rgba(239,68,68,0.15);
+    border-left: 2px solid #ef4444;
+    padding: 0.45rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #fecaca;
+    line-height: 1.4;
+    margin-bottom: 0.35rem;
+}
+.step-issue strong { color: white; }
+.step-passed-msg {
+    background: rgba(16,185,129,0.15);
+    border-left: 2px solid #10b981;
+    padding: 0.45rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #d1fae5;
+    margin-bottom: 0.35rem;
+}
+.step-passed-msg strong { color: white; }
+.step-notvisible-msg {
+    background: rgba(156,163,175,0.15);
+    border-left: 2px solid #9ca3af;
+    padding: 0.45rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: #d1d5db;
+    line-height: 1.4;
+    margin-bottom: 0.35rem;
+}
+.step-notvisible-msg strong { color: white; }
+.step-cue {
+    background: rgba(59,130,246,0.12);
+    border-left: 2px solid #3b82f6;
+    padding: 0.45rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    color: #bfdbfe;
+    line-height: 1.4;
+    font-style: italic;
+}
+.step-cue strong { font-style: normal; color: white; }
+
+/* ============================================================
+   Coach feedback box
+   ============================================================ */
+.feedback-caption {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-bottom: 0.6rem;
+}
+.feedback-box {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 1.25rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+    color: #e2e8f0;
+    white-space: pre-wrap;
+}
+
+/* ============================================================
+   Mobile responsiveness
+   ============================================================ */
+@media (max-width: 600px) {
+    .container { padding: 1rem; }
+    .page-header h1 { font-size: 1.4rem; }
+    .page-header .subtitle { font-size: 0.8rem; }
+    .header-actions { width: 100%; justify-content: flex-end; }
+    .dropdown-toggle { padding: 0.5rem 0.85rem; font-size: 0.8rem; }
 }
