@@ -2,8 +2,10 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>🧘 Tadasana Pose Analysis</h1>
-    <div class="subtitle">Your alignment report</div>
+    <div class="header-content">
+        <h1>🧘 Tadasana Pose Analysis</h1>
+        <div class="subtitle">Your alignment report</div>
+    </div>
 </div>
 
 <div class="action-row">
@@ -17,7 +19,7 @@
 {% endif %}
 
 <div class="hero-row">
-    <!-- Score hero -->
+    <!-- Score hero (no Top Issues block - replaced by missing-parts notice) -->
     <div class="score-hero">
         <div>
             <div class="score-label">Final Score</div>
@@ -36,16 +38,17 @@
                 <span class="input-mode-tag">{{ '📹 Video' if result.mode == 'video' else '📸 Photo' }}</span>
             </div>
         </div>
+
+        {# Missing parts notice: shows ONLY if some steps weren't visible #}
+        {% set missing_steps = result.steps | selectattr('not_visible') | list %}
+        {% if missing_steps %}
         <div class="issues-block">
-            <h4>Top Issues</h4>
-            {% if result.issues %}
-                {% for issue in result.issues[:3] %}
-                    <div class="issue-item">{{ issue }}</div>
-                {% endfor %}
-            {% else %}
-                <div class="no-issues">✓ No major issues detected</div>
-            {% endif %}
+            <h4>Couldn't Be Evaluated</h4>
+            {% for s in missing_steps %}
+                <div class="issue-item">{{ s.name }} - body part not in frame</div>
+            {% endfor %}
         </div>
+        {% endif %}
     </div>
 
     <!-- Annotated image -->
@@ -80,16 +83,21 @@
             {% set step_key = 'step_' ~ s.step %}
             {% set img = result.step_image_urls.get(step_key) %}
 
-            {# CHANGED: color/icon now based on score >= 50, not fail_rate #}
+            {# Color based on score >= 50 #}
             {% set passed = s.average_score >= 50 %}
             {% set pf_class = 'passed' if passed else 'failed' %}
             {% set score_class = 'pass' if passed else 'fail' %}
             {% set icon = '✅' if passed else '⚠️' %}
 
+            {# Build the rate label - hide when 0% in video mode #}
             {% if result.mode == 'photo' %}
                 {% set rate_label = 'Pass' if passed else 'Needs work' %}
             {% else %}
-                {% set rate_label = 'Failed in ' ~ s.fail_rate_percent ~ '% of frames' %}
+                {% if s.fail_rate_percent > 0 %}
+                    {% set rate_label = 'Failed in ' ~ s.fail_rate_percent ~ '% of frames' %}
+                {% else %}
+                    {% set rate_label = '' %}
+                {% endif %}
             {% endif %}
 
             <div class="step-card {{ pf_class }}">
@@ -102,7 +110,9 @@
                         <span class="step-score-big {{ score_class }}">{{ s.average_score }}</span>
                         <span class="step-score-suffix">/100</span>
                     </div>
+                    {% if rate_label %}
                     <div class="step-fail-rate">{{ rate_label }}</div>
+                    {% endif %}
                 </div>
                 <div class="step-image-wrap">
                     {% if img %}<img src="{{ img }}" alt="Step {{ s.step }}">{% endif %}
