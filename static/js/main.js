@@ -1,31 +1,81 @@
 /**
  * Main page logic:
- *   - tab switching between Upload Video / Upload Photo / Record Video
- *   - file selection previews
- *   - hooking up the Analyze button to POST /upload
- *   - loading overlay during analysis
+ *   - Info button toggles the "How to capture" banner
+ *   - Capture selector: Record Video button + Upload dropdown (Video / Photo)
+ *   - File selection previews with "Uploading..." feedback state
+ *   - Analyze button POSTs to /upload and redirects to results
  *
- * NEW: shows "Uploading..." state while the browser is reading the file,
- *      so the user can't click Analyze until the file is fully ready.
+ * Functionality unchanged - only layout adapted to the new UI.
  */
 (function () {
     'use strict';
 
     let pending = null;
-    let isProcessingFile = false;  // true while file is being read
+    let isProcessingFile = false;
 
-    // Tab switching
+    // ----- Info banner toggle ---------------------------------------------
+    const infoToggle = document.getElementById('info-toggle');
+    const infoBanner = document.getElementById('info-banner');
+    if (infoToggle && infoBanner) {
+        infoToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isShown = infoBanner.classList.toggle('show');
+            infoToggle.classList.toggle('active', isShown);
+        });
+    }
+
+    // ----- Upload dropdown toggle -----------------------------------------
+    const uploadToggle = document.getElementById('upload-toggle');
+    const uploadOptions = document.getElementById('upload-options');
+    if (uploadToggle && uploadOptions) {
+        uploadToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            uploadOptions.classList.toggle('show');
+        });
+        // Close dropdown when clicking anywhere outside it
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.upload-dropdown')) {
+                uploadOptions.classList.remove('show');
+            }
+        });
+    }
+
+    // ----- Tab switching --------------------------------------------------
+    // Works for both the top-level "Record Video" button AND the dropdown items
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
 
     tabButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
             const target = btn.getAttribute('data-tab');
+            if (!target) return;
+
+            // Mark THIS tab button as active, others inactive
             tabButtons.forEach((b) => b.classList.toggle('active', b === btn));
+
+            // Update upload dropdown toggle's label + active state
+            if (uploadToggle) {
+                if (target === 'upload-video') {
+                    uploadToggle.innerHTML = '📹 Upload Video <span class="dropdown-caret">▾</span>';
+                    uploadToggle.classList.add('active');
+                } else if (target === 'upload-photo') {
+                    uploadToggle.innerHTML = '🖼️ Upload Photo <span class="dropdown-caret">▾</span>';
+                    uploadToggle.classList.add('active');
+                } else {
+                    uploadToggle.innerHTML = '📁 Upload <span class="dropdown-caret">▾</span>';
+                    uploadToggle.classList.remove('active');
+                }
+            }
+
+            // Close dropdown after picking an item
+            if (uploadOptions) uploadOptions.classList.remove('show');
+
+            // Show the right tab panel
             tabPanels.forEach((p) => {
                 p.classList.toggle('active', p.id === `tab-${target}`);
             });
 
+            // Reset camera if leaving the record tab
             if (target !== 'record-video' && window.PoseRecorder) {
                 window.PoseRecorder.reset();
             }
@@ -33,7 +83,7 @@
         });
     });
 
-    // Upload Video tab
+    // ----- Upload Video file selection ------------------------------------
     const videoInput = document.getElementById('video-file');
     const videoPreview = document.getElementById('video-preview');
 
@@ -46,11 +96,9 @@
             return;
         }
 
-        // Show "Uploading..." while the browser prepares the file
         setUploadingState(true);
         videoPreview.innerHTML = '<div class="upload-status">⏳ Preparing video... please wait</div>';
 
-        // Read the file - wait for the browser to fully load it before allowing Analyze
         const url = URL.createObjectURL(file);
         const tempVideo = document.createElement('video');
         tempVideo.preload = 'metadata';
@@ -68,7 +116,7 @@
         };
     });
 
-    // Upload Photo tab
+    // ----- Upload Photo file selection ------------------------------------
     const photoInput = document.getElementById('photo-file');
     const photoPreview = document.getElementById('photo-preview');
 
@@ -81,7 +129,6 @@
             return;
         }
 
-        // Show "Uploading..." while the browser reads the image
         setUploadingState(true);
         photoPreview.innerHTML = '<div class="upload-status">⏳ Preparing photo... please wait</div>';
 
@@ -101,7 +148,7 @@
         };
     });
 
-    // Record Video tab
+    // ----- Record Video controls ------------------------------------------
     document.getElementById('btn-start-camera')
         .addEventListener('click', () => window.PoseRecorder.startCamera());
     document.getElementById('btn-start-record')
@@ -111,7 +158,6 @@
     document.getElementById('btn-discard')
         .addEventListener('click', () => window.PoseRecorder.reset());
 
-    // When user stops recording, mark as Uploading until blob is fully ready
     document.addEventListener('recording-stopping', () => {
         setUploadingState(true);
     });
@@ -130,7 +176,7 @@
         updateAnalyzeButton();
     });
 
-    // Analyze button
+    // ----- Analyze button -------------------------------------------------
     const analyzeBtn = document.getElementById('btn-analyze');
     const originalAnalyzeText = analyzeBtn.textContent;
 
