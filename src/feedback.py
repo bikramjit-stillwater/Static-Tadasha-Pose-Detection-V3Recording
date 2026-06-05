@@ -5,13 +5,9 @@ Env vars:
   OPENROUTER_API_KEY  - required
   OPENROUTER_MODEL    - optional, defaults to 'anthropic/claude-sonnet-4.5'
 
-Output structure (unchanged from Gemini version):
-  - 1 opening sentence (no "Summary:" prefix)
-  - "Areas Where You Did Well:" + 2-3 bullets
-  - "Areas to Improve:" + max 5 bullets
-  - 1 closing motivational sentence (no "Motivation:" prefix)
-
-Hidden steps (not visible in frame) are filtered out before sending to the LLM.
+Exposes:
+  generate_feedback(result)   - new name
+  get_gemini_feedback(result) - alias for backwards compat with existing app.py
 """
 
 import os
@@ -25,7 +21,6 @@ OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 def _visible_steps(steps):
-    """Filter out hidden / not-visible steps so the LLM only sees evaluated ones."""
     return [s for s in steps if not s.get("hide_from_ui")]
 
 
@@ -76,7 +71,6 @@ Important rules:
 
 
 def _clean_feedback(text):
-    """Strip any 'Summary:' or 'Motivation:' prefixes Claude might add anyway."""
     lines = text.split("\n")
     cleaned = []
     for line in lines:
@@ -91,7 +85,6 @@ def _clean_feedback(text):
 
 
 def _call_openrouter(prompt):
-    """Call OpenRouter and return the response text. Raises on any failure."""
     body = json.dumps({
         "model": OPENROUTER_MODEL,
         "messages": [{"role": "user", "content": prompt}],
@@ -117,7 +110,6 @@ def _call_openrouter(prompt):
 
 
 def _rule_based_feedback(result):
-    """Fallback if OpenRouter call fails or key is missing."""
     visible = _visible_steps(result.get("steps", []))
     final_score = result.get("final_score", 0)
 
@@ -175,3 +167,7 @@ def generate_feedback(result):
     except Exception as e:
         print(f"[feedback] OpenRouter error: {e!r}")
         return _rule_based_feedback(result)
+
+
+# Backwards-compatible alias - app.py imports this name from the old Gemini setup
+get_gemini_feedback = generate_feedback
