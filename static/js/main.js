@@ -1,17 +1,16 @@
 /**
- * Main page logic:
- *   - Info button toggles the "How to capture" banner
- *   - Capture selector: Record Video button + Upload dropdown (Video / Photo)
- *   - File selection previews with "Uploading..." feedback state
- *   - Analyze button POSTs to /upload and redirects to results
- *
- * Functionality unchanged - only layout adapted to the new UI.
+ * Main page logic with AUTO-ANALYZE:
+ *   - File or recording becomes ready → analysis starts AUTOMATICALLY
+ *   - No "Analyze Pose" button to click
+ *   - Loading overlay appears immediately when analysis kicks off
+ *   - This prevents the "Load failed" error from clicking before the file is ready
  */
 (function () {
     'use strict';
 
     let pending = null;
     let isProcessingFile = false;
+    let analysisStarted = false;   // guards against double-firing
 
     // ----- Info banner toggle ---------------------------------------------
     const infoToggle = document.getElementById('info-toggle');
@@ -32,7 +31,6 @@
             e.stopPropagation();
             uploadOptions.classList.toggle('show');
         });
-        // Close dropdown when clicking anywhere outside it
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.upload-dropdown')) {
                 uploadOptions.classList.remove('show');
@@ -41,7 +39,6 @@
     }
 
     // ----- Tab switching --------------------------------------------------
-    // Works for both the top-level "Record Video" button AND the dropdown items
     const tabButtons = document.querySelectorAll('.tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
 
@@ -50,10 +47,8 @@
             const target = btn.getAttribute('data-tab');
             if (!target) return;
 
-            // Mark THIS tab button as active, others inactive
             tabButtons.forEach((b) => b.classList.toggle('active', b === btn));
 
-            // Update upload dropdown toggle's label + active state
             if (uploadToggle) {
                 if (target === 'upload-video') {
                     uploadToggle.innerHTML = '📹 Upload Video <span class="dropdown-caret">▾</span>';
@@ -67,19 +62,15 @@
                 }
             }
 
-            // Close dropdown after picking an item
             if (uploadOptions) uploadOptions.classList.remove('show');
 
-            // Show the right tab panel
             tabPanels.forEach((p) => {
                 p.classList.toggle('active', p.id === `tab-${target}`);
             });
 
-            // Reset camera if leaving the record tab
             if (target !== 'record-video' && window.PoseRecorder) {
                 window.PoseRecorder.reset();
             }
-            updateAnalyzeButton();
         });
     });
 
@@ -92,11 +83,10 @@
         if (!file) {
             videoPreview.innerHTML = '';
             pending = null;
-            updateAnalyzeButton();
             return;
         }
 
-        setUploadingState(true);
+        isProcessingFile = true;
         videoPreview.innerHTML = '<div class="upload-status">⏳ Preparing video... please wait</div>';
 
         const url = URL.createObjectURL(file);
@@ -107,12 +97,13 @@
         tempVideo.onloadedmetadata = () => {
             videoPreview.innerHTML = `<video src="${url}" controls></video>`;
             pending = { type: 'video', source: file, filename: file.name };
-            setUploadingState(false);
+            isProcessingFile = false;
+            startAnalysis();           // AUTO-TRIGGER
         };
         tempVideo.onerror = () => {
             videoPreview.innerHTML = '<div class="upload-status error">Could not read this video. Please try another file.</div>';
             pending = null;
-            setUploadingState(false);
+            isProcessingFile = false;
         };
     });
 
@@ -125,11 +116,10 @@
         if (!file) {
             photoPreview.innerHTML = '';
             pending = null;
-            updateAnalyzeButton();
             return;
         }
 
-        setUploadingState(true);
+        isProcessingFile = true;
         photoPreview.innerHTML = '<div class="upload-status">⏳ Preparing photo... please wait</div>';
 
         const url = URL.createObjectURL(file);
@@ -139,12 +129,13 @@
         tempImg.onload = () => {
             photoPreview.innerHTML = `<img src="${url}" alt="Selected photo">`;
             pending = { type: 'photo', source: file, filename: file.name };
-            setUploadingState(false);
+            isProcessingFile = false;
+            startAnalysis();           // AUTO-TRIGGER
         };
         tempImg.onerror = () => {
             photoPreview.innerHTML = '<div class="upload-status error">Could not read this photo. Please try another file.</div>';
             pending = null;
-            setUploadingState(false);
+            isProcessingFile = false;
         };
     });
 
@@ -159,49 +150,32 @@
         .addEventListener('click', () => window.PoseRecorder.reset());
 
     document.addEventListener('recording-stopping', () => {
-        setUploadingState(true);
+        isProcessingFile = true;
     });
     document.addEventListener('recording-ready', (e) => {
         const blob = e.detail.blob;
         const mime = e.detail.mimeType;
         const ext = mime.includes('mp4') ? 'mp4' : 'webm';
         pending = { type: 'video', source: blob, filename: `recording.${ext}` };
-        setUploadingState(false);
+        isProcessingFile = false;
+        startAnalysis();               // AUTO-TRIGGER
     });
     document.addEventListener('recording-cleared', () => {
         if (pending && pending.source instanceof Blob && !(pending.source instanceof File)) {
             pending = null;
         }
-        setUploadingState(false);
-        updateAnalyzeButton();
+        isProcessingFile = false;
     });
 
-    // ----- Analyze button -------------------------------------------------
-    const analyzeBtn = document.getElementById('btn-analyze');
-    const originalAnalyzeText = analyzeBtn.textContent;
+    // ----- Analysis -------------------------------------------------------
+    async function startAnalysis() {
+        if (analysisStarted) return;
+        if (!pending) return;
+        if (isProcessingFile) return;
 
-    function setUploadingState(uploading) {
-        isProcessingFile = uploading;
-        if (uploading) {
-            analyzeBtn.disabled = true;
-            analyzeBtn.textContent = '⏳ Uploading... please wait';
-        } else {
-            analyzeBtn.textContent = originalAnalyzeText;
-            updateAnalyzeButton();
-        }
-    }
-
-    function updateAnalyzeButton() {
-        if (isProcessingFile) {
-            analyzeBtn.disabled = true;
-            return;
-        }
-        analyzeBtn.disabled = !pending;
-    }
-
-    analyzeBtn.addEventListener('click', async () => {
-        if (!pending || isProcessingFile) return;
+        analysisStarted = true;
         showLoading(true);
+
         try {
             const formData = new FormData();
             formData.append('media', pending.source, pending.filename);
@@ -229,15 +203,14 @@
             }
         } catch (err) {
             showLoading(false);
+            analysisStarted = false;   // allow retry
             console.error(err);
-            alert('Analysis failed:\n\n' + err.message);
+            alert('Analysis failed:\n\n' + err.message + '\n\nPlease try again.');
         }
-    });
+    }
 
     function showLoading(show) {
         document.getElementById('loading-overlay')
             .classList.toggle('active', !!show);
     }
-
-    updateAnalyzeButton();
 })();
