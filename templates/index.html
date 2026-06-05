@@ -40,19 +40,18 @@
 
 <h2>Choose how to capture your pose</h2>
 
-<!-- Only Record Video button here; Upload moved to header -->
 <div class="capture-selector">
     <button class="tab-btn active" data-tab="record-video">🎥 Record Video</button>
 </div>
 
-<!-- Tab panels - Record Video is default active -->
+<!-- Tab panels - Record Video is default active. Analysis auto-starts when ready. -->
 <div class="tab-panel" id="tab-upload-video">
     <div class="upload-zone">
         <input type="file" id="video-file" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska,.mp4,.mov,.avi,.mkv" hidden>
         <label for="video-file" class="upload-label">
             <div class="upload-icon">📁</div>
             <div class="upload-text">Click to select a video file</div>
-            <div class="upload-hint">MP4, MOV, AVI, or MKV (max 100 MB)</div>
+            <div class="upload-hint">MP4, MOV, AVI, or MKV (max 100 MB). Analysis starts automatically.</div>
         </label>
         <div class="upload-preview" id="video-preview"></div>
     </div>
@@ -64,7 +63,7 @@
         <label for="photo-file" class="upload-label">
             <div class="upload-icon">🖼️</div>
             <div class="upload-text">Click to select a photo</div>
-            <div class="upload-hint">JPG or PNG</div>
+            <div class="upload-hint">JPG or PNG. Analysis starts automatically.</div>
         </label>
         <div class="upload-preview" id="photo-preview"></div>
     </div>
@@ -82,15 +81,11 @@
             <button class="record-btn stop" id="btn-stop-record" disabled>■ Stop</button>
             <button class="record-btn ghost" id="btn-discard" style="display:none">Discard</button>
         </div>
-        <div class="record-hint">Record yourself in Tadasana with arms overhead. 5-15 seconds is plenty. Hold steadily.</div>
+        <div class="record-hint">Record yourself in Tadasana with arms overhead. 5-15 seconds is plenty. Hold steadily. Analysis starts automatically when you stop recording.</div>
     </div>
 </div>
 
-<div class="action-row">
-    <button class="primary-btn" id="btn-analyze" disabled>🔍 Analyze Pose</button>
-</div>
-
-<!-- Loading overlay -->
+<!-- Loading overlay (auto-shown when analysis begins) -->
 <div class="loading-overlay" id="loading-overlay">
     <div class="loading-card">
         <div class="spinner"></div>
