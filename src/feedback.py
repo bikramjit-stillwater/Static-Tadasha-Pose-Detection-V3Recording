@@ -1,13 +1,16 @@
 """
 Coach's feedback generator for Tadasana via OpenRouter (Claude Sonnet 4.5).
 
+FLEXIBLE SIGNATURE:
+  Accepts BOTH calling styles to match any existing app.py:
+    generate_feedback(result_dict)
+    generate_feedback(steps=[...], final_score=N, ...)
+    generate_feedback(steps=[...], score=N, ...)
+    get_gemini_feedback(...)  - same thing, backwards-compat alias
+
 Env vars:
   OPENROUTER_API_KEY  - required
   OPENROUTER_MODEL    - optional, defaults to 'anthropic/claude-sonnet-4.5'
-
-Exposes:
-  generate_feedback(result)   - new name
-  get_gemini_feedback(result) - alias for backwards compat with existing app.py
 """
 
 import os
@@ -20,8 +23,32 @@ OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-sonnet-4.5").
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
+def _normalize_input(*args, **kwargs):
+    """
+    Accept any of these calling styles and return a unified result dict:
+        generate_feedback({'steps':..., 'final_score':...})
+        generate_feedback(steps=..., final_score=...)
+        generate_feedback(steps=..., score=...)
+        generate_feedback(steps=..., final_score=..., issues=..., mode=...)
+    """
+    result = {}
+    if args:
+        if isinstance(args[0], dict):
+            result.update(args[0])
+    result.update(kwargs)
+
+    # Normalize common aliases
+    if "final_score" not in result and "score" in result:
+        result["final_score"] = result["score"]
+    if "final_score" not in result:
+        result["final_score"] = 0
+    if "steps" not in result:
+        result["steps"] = []
+    return result
+
+
 def _visible_steps(steps):
-    return [s for s in steps if not s.get("hide_from_ui")]
+    return [s for s in (steps or []) if not s.get("hide_from_ui")]
 
 
 def _build_prompt(result):
@@ -34,7 +61,7 @@ def _build_prompt(result):
         status = "Passed" if score >= 50 else "Needs improvement"
         issue = s.get("issue") or "no issues"
         lines.append(
-            f"Step {s['step']}: {s['name']} - Score: {score}/100 - "
+            f"Step {s.get('step', '?')}: {s.get('name', 'Step')} - Score: {score}/100 - "
             f"{status} - Issue: {issue} - Cue: {s.get('cue', '')}"
         )
     steps_text = "\n".join(lines) if lines else "(No steps evaluated)"
@@ -134,7 +161,7 @@ def _rule_based_feedback(result):
     parts = [opening, "", "Areas Where You Did Well:"]
     if well:
         for s in well[:3]:
-            parts.append(f"- Your {s['name']} alignment looked good in this pose.")
+            parts.append(f"- Your {s.get('name', 'this step')} alignment looked good in this pose.")
     else:
         parts.append("- You showed up and gave it a try - that is the first step.")
 
@@ -142,7 +169,7 @@ def _rule_based_feedback(result):
     if needs:
         for s in needs[:5]:
             issue = s.get("issue") or s.get("cue") or "review the alignment for this step"
-            parts.append(f"- {s['name']}: {issue}")
+            parts.append(f"- {s.get('name', 'This step')}: {issue}")
     else:
         parts.append("- Nothing major - keep refining the details.")
 
@@ -150,8 +177,13 @@ def _rule_based_feedback(result):
     return "\n".join(parts)
 
 
-def generate_feedback(result):
-    """Main entry. Returns a feedback string for the result page."""
+def generate_feedback(*args, **kwargs):
+    """
+    Flexible entry point - accepts dict or keyword arguments.
+    Returns a feedback string for the result page.
+    """
+    result = _normalize_input(*args, **kwargs)
+
     if not OPENROUTER_API_KEY:
         print("[feedback] OPENROUTER_API_KEY not set - using rule-based fallback")
         return _rule_based_feedback(result)
@@ -169,5 +201,5 @@ def generate_feedback(result):
         return _rule_based_feedback(result)
 
 
-# Backwards-compatible alias - app.py imports this name from the old Gemini setup
+# Backwards-compatible alias - app.py imports this name
 get_gemini_feedback = generate_feedback
