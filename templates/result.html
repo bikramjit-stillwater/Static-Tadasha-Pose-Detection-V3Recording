@@ -133,4 +133,15 @@
 <h2>Coach's Feedback</h2>
 <div class="feedback-box">{{ result.feedback }}</div>
 
+<script>
+  (function () {
+    var score = Number("{{ result.final_score }}");
+    if (!isNaN(score) && window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'sw_yoga_score', asana: 'tadasana', score: score }, '*');
+    }
+  })();
+</script>
+
 {% endblock %}
+
+
